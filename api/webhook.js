@@ -30,14 +30,18 @@ module.exports = async (request, response) => {
       if (!url) {
         return;
       }
-      const message = renderMessage(url);
+      const metaUrl = `${READABILITY_API_URL}?url=${encodeURIComponent(
+        url
+      )}&type=json`;
+      const meta = await (await fetch(metaUrl)).json();
+      const message = await renderMessage(url, meta);
       try {
         await bot.answerInlineQuery(inlineQuery.id, [
           {
             type: "article",
             id: sha256(url),
-            title: "Test",
-            url,
+            title: meta.title,
+            description: meta.excerpt,
             input_message_content: {
               message_text: message,
               disable_web_page_preview: false,
@@ -46,8 +50,8 @@ module.exports = async (request, response) => {
           },
         ]);
       } catch (_e) {
-        // expired query
-        // console.error(_e);
+        // a possible case is expired query
+        console.error(_e);
       }
     } else if (message && message.text.trim()) {
       if (message.text.trim() === "/start") {
@@ -60,7 +64,7 @@ module.exports = async (request, response) => {
         if (url) {
           let rendered;
           try {
-            rendered = await renderMessage(url);
+            rendered = await renderMessage(url, meta);
           } catch (e) {
             if (message.chat.type === "private") {
               await bot.sendMessage(
@@ -99,11 +103,7 @@ module.exports = async (request, response) => {
   }
 };
 
-async function renderMessage(url) {
-  const metaUrl = `${READABILITY_API_URL}?url=${encodeURIComponent(
-    url
-  )}&type=json`;
-  const meta = await (await fetch(metaUrl)).json();
+async function renderMessage(url, meta) {
   const readableUrl = `${READABILITY_API_URL}?url=${encodeURIComponent(url)}`;
   const ivUrl = `https://t.me/iv?url=${encodeURIComponent(
     readableUrl

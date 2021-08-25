@@ -2,38 +2,62 @@ const { Readability } = require("@mozilla/readability");
 const fetch = require("node-fetch");
 const { JSDOM } = require("jsdom");
 
-const APP_URL = process.env.VERCEL_URL ?? "https://readability-bot.vercel.com/";
+const APP_URL =
+  "https://" + (process.env.VERCEL_URL ?? "readability-bot.vercel.com");
 
 module.exports = async (request, response) => {
+  if ((request.headers["user-agent"] ?? "").includes("readability-bot")) {
+    response.send(EASTER_EGG_PAGE);
+    return;
+  }
   const { url, /*selector,*/ type } = request.query;
-  const original = await fetch(url, {
-    headers: { "User-Agent": request.headers["User-Agent"] },
-  });
-  const dom = new JSDOM(await original.textConverted(), { url: url });
-  const doc = dom.window.document;
-  const reader = new Readability(
-    /*selector ? doc.querySelector(selector) :*/ doc
-  );
-  const article = reader.parse();
-  const lang =
-    doc.querySelector("html").getAttribute("lang") ??
-    doc.querySelector("body").getAttribute("lang");
-  const meta = Object.assign({ url, lang }, article);
-  meta.byline = stripRepeatedWhitespace(meta.byline);
-  meta.siteName = stripRepeatedWhitespace(meta.siteName);
-  meta.excerpt = stripRepeatedWhitespace(meta.excerpt);
+  if (!url & (type !== "json")) {
+    response.redirect(APP_URL);
+    return;
+  }
+  let meta, upstreamResponse;
+  try {
+    if (!isValidUrl(url)) {
+      response.status(400).send("Invalid URL");
+      return;
+    }
+    upstreamResponse = await fetch(url, {
+      headers: constructUpstreamRequestHeaders(request.headers),
+    });
+    const dom = new JSDOM(await upstreamResponse.textConverted(), { url: url });
+    const doc = dom.window.document;
+    const reader = new Readability(
+      /*selector ? doc.querySelector(selector) :*/ doc
+    );
+    const article = reader.parse();
+    const lang =
+      doc.querySelector("html").getAttribute("lang") ??
+      doc.querySelector("body").getAttribute("lang");
+    meta = Object.assign({ url, lang }, article);
+    meta.byline = stripRepeatedWhitespace(meta.byline);
+    meta.siteName = stripRepeatedWhitespace(meta.siteName);
+    meta.excerpt = stripRepeatedWhitespace(meta.excerpt);
+  } catch (e) {
+    response.status(500).send(e.toString());
+    return;
+  }
+  const headers = {
+    "cache-control":
+      upstreamResponse.headers["cache-control"] ?? "public, max-age=360",
+  };
   if (type === "json") {
-    response.json(meta);
+    response.json(meta, { headers });
   } else {
-    response.send(render(meta));
+    response.send(render(meta), { headers });
   }
 };
 
-function render(params) {
-  let { lang, title, byline: author, siteName, content, url, excerpt } = params;
+function render(meta) {
+  let { lang, title, byline: author, siteName, content, url, excerpt } = meta;
   const genDate = new Date();
   const langAttr = lang ? `lang="${lang}"` : "";
-  const byline = [author, siteName].filter((v) => v).join(" • ") || new URL(url).hostname;
+  const byline =
+    [author, siteName].filter((v) => v).join(" • ") || new URL(url).hostname;
   siteName = siteName || new URL(url).hostname;
   const ogSiteName = siteName
     ? `<meta property="og:site_name" content="${siteName}">`
@@ -139,6 +163,15 @@ function render(params) {
 `;
 }
 
+function constructUpstreamRequestHeaders(headers) {
+  return {
+    "user-agent": (headers["user-agent"] ?? "") + ` readability-bot/0.0`,
+    "x-real-ip": headers["x-real-ip"],
+    "x-forwarded-for":
+      headers["x-real-ip"] + ", " + (headers["x-forwarded-for"] ?? ""),
+  };
+}
+
 function stripRepeatedWhitespace(s) {
   if (s) {
     return s.replace(/\s+/g, " ");
@@ -146,3 +179,20 @@ function stripRepeatedWhitespace(s) {
     return s;
   }
 }
+
+function isValidUrl(url) {
+  try {
+    const _ = new URL(url);
+    return true;
+  } catch (_e) {
+    return false;
+  }
+}
+
+const EASTER_EGG_PAGE = `<html>
+<head><title>Catastrophic Server Error</title></head>
+<body>
+  <p>Server is down. (<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">🛠︎ Debug</a>)</p>
+</body>
+</html>
+`;
