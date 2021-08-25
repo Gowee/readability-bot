@@ -43,7 +43,7 @@ module.exports = async (request, response) => {
   }
   const headers = {
     "cache-control":
-      upstreamResponse.headers["cache-control"] ?? "public, max-age=360",
+      upstreamResponse.headers["cache-control"] ?? "public, max-age=900",
   };
   if (type === "json") {
     response.json(meta, { headers });

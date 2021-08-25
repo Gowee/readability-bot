@@ -56,6 +56,7 @@ module.exports = async (request, response) => {
         if (url) {
           let rendered;
           try {
+            const meta = await (await fetch(metaUrl)).json();
             rendered = await renderMessage(url, meta);
           } catch (e) {
             if (message.chat.type === "private") {
