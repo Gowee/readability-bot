@@ -24,19 +24,23 @@ module.exports = async (request, response) => {
       const meta = await (await fetch(metaUrl)).json();
       const message = await renderMessage(url, meta);
       try {
-        await bot.answerInlineQuery(inlineQuery.id, [
-          {
-            type: "article",
-            id: sha256(url),
-            title: meta.title,
-            description: meta.excerpt,
-            input_message_content: {
-              message_text: message,
-              disable_web_page_preview: false,
-              parse_mode: "HTML",
+        await bot.answerInlineQuery(
+          inlineQuery.id,
+          [
+            {
+              type: "article",
+              id: sha256(url),
+              title: meta.title,
+              description: meta.excerpt,
+              input_message_content: {
+                message_text: message,
+                disable_web_page_preview: false,
+                parse_mode: "HTML",
+              },
             },
-          },
-        ]);
+          ],
+          { is_personal: false, cache_time: 900 }
+        );
       } catch (_e) {
         // a possible case is expired query
         console.error(_e);
