@@ -19,9 +19,11 @@
   },
   "dependencies": {
     "@mozilla/readability": "^0.4.1",
+    "encoding": "^0.1.13",
     "jsdom": "^17.0.0",
     "node-fetch": "^2.6.1",
-    "normalize-url": "^7.0.1",
+    "node-telegram-bot-api": "^0.54.0",
+    "normalize-url": "^6.1.0",
     "sirv-cli": "^1.0.0"
   }
 }
