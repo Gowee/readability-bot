@@ -1,23 +1,11 @@
 const crypto = require("crypto");
-const { Readability } = require("@mozilla/readability");
 const fetch = require("node-fetch");
-const { JSDOM } = require("jsdom");
-const normalizeUrl = require("normalize-url");
 const TelegramBot = require("node-telegram-bot-api");
 
-// import  { Readability } from '@mozilla/readability';
-// import fetch from 'node-fetch';
-// import { JSDOM } from 'jsdom';
-// import normalizeUrl from 'normalize-url';
-// import TelegramBot from 'node-telegram-bot-api';
-
-// process.env.NTBA_FIX_319 = "test";
+// process.env.NTBA_FIX_319 = "test"; // https://github.com/yagop/node-telegram-bot-api/issues/540
 const READABILITY_API_URL = getApiUrlFromEnv();
 const IV_RHASH = process.env.IV_RHASH ?? "261b1281223eaa";
 const BOT_TOKEN = process.env.BOT_TOKEN;
-// console.log("Using API:", READABILITY_API_URL, ", IV RHASH:", IV_RHASH);
-
-// const TELEGRAPH_TOKEN = process.env.TELEGRAPH_TOKEN;
 
 const bot = new TelegramBot(BOT_TOKEN);
 

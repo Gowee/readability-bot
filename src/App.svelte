@@ -59,10 +59,6 @@
 		min-width: 100vw;
 		min-height: 100vh;
 		margin-top: -54px;
-		/* text-align: center;
-		padding: 1em; */
-		/* max-width: 450px;
-		margin: 0 auto;*/
 	}
 
 	h1 {
@@ -71,12 +67,6 @@
 		font-size: 4em;
 		font-weight: 100;
 	}
-
-	/* @media (min-width: 640px) {
-		main {
-			max-width: none;
-		}
-	} */
 
 	.seperator {
 		padding: 0 3px;
@@ -91,16 +81,4 @@
 			margin: 2rem 0rem;
 		}
 	}
-
-	/* .search-box {
-		width: 100%;
-	} */
-
-	/*@media (max-width: 1024px) {
-		.search-box {
-			width: 100%;
-			margin-left: 2rem;
-			margin-right: 2rem;
-		}
-	}*/
 </style>
