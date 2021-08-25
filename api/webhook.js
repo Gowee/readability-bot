@@ -45,7 +45,7 @@ module.exports = async (request, response) => {
       if (message.text.trim() === "/start") {
         await bot.sendMessage(
           message.chat.id,
-          "Just send an article link here. It will be converted to a readable webpage with Instant View."
+          "Just send an article link here. It will be converted to a readable webpage with Instant View. Inline mode is also supported."
         );
       } else {
         const url = tryFixUrl(message.text);
