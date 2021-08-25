@@ -33,19 +33,26 @@
 		<p>
 			Telegram:
 			<a href="https://t.me/ReadabBot" target="_blank"> @ReadabBot </a>
-			<span class="seperator">|</span>
-			<a href="https://github.com/gowee/readability-bot" target="_blank">
+			<!-- <span class="seperator">|</span> -->
+			<!-- <a href="https://github.com/gowee/readability-bot" target="_blank">
 				src
-			</a>
+			</a> -->
 		</p>
 		<p>
 			<small>
-				The service is powered by
+				The 
+				<a
+					href="https://github.com/gowee/readability-bot"
+					target="_blank"
+				>
+				service
+				</a>
+				is powered by
 				<a
 					href="https://github.com/mozilla/readability"
 					target="_blank"
 				>
-					Readability.js
+				Readability.js
 				</a>
 				and hosted on
 				<a href="https://vercel.com/" target="_blank">Vercel</a>.
@@ -64,7 +71,7 @@
 	h1 {
 		color: #ff3e00;
 		text-transform: uppercase;
-		font-size: 4em;
+		font-size: 3.6em;
 		font-weight: 100;
 	}
 
