@@ -3,7 +3,7 @@ const fetch = require("node-fetch");
 const { JSDOM } = require("jsdom");
 
 const APP_URL =
-  "https://" + (process.env.VERCEL_URL ?? "readability-bot.vercel.com");
+  "https://" + (process.env.VERCEL_URL ?? "readability-bot.vercel.app");
 
 module.exports = async (request, response) => {
   if ((request.headers["user-agent"] ?? "").includes("readability-bot")) {

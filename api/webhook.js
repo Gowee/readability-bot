@@ -129,6 +129,6 @@ function getApiUrlFromEnv() {
   } else if (process.env.VERCEL_URL) {
     return process.env.VERCEL_URL + "/api/readability";
   } else {
-    return "https://readability-bot.vercel.com/api/readability";
+    return "https://readability-bot.vercel.app/api/readability";
   }
 }

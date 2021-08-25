@@ -34,9 +34,9 @@
 			Telegram:
 			<a href="https://t.me/ReadabBot" target="_blank"> @ReadabBot </a>
 			<span class="seperator">|</span>
-			<a href="https://github.com/gowee/readability-bot" target="_blank"
-				>Source code</a
-			>
+			<a href="https://github.com/gowee/readability-bot" target="_blank">
+				Src
+			</a>
 		</p>
 		<p>
 			<small>
