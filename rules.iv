@@ -1,0 +1,13 @@
+# Telegram Instant View rules: https://instantview.telegram.org/ 
+# Maintained by: Hung-I WANG <whygowe@gmail.com>
+~version: "2.1"
+
+?path: /api/readability\?url=(.+)
+
+
+body: //body
+@remove: $body//header
+
+# Fix: Element <img> is not supported in <p>: 
+# https://stackoverflow.com/questions/54969371/telegrams-instant-view-api-element-img-is-not-supported-in-p
+@replace_tag(<figure>): $body//p[.//img]

@@ -4,7 +4,7 @@ const TelegramBot = require("node-telegram-bot-api");
 
 // process.env.NTBA_FIX_319 = "test"; // https://github.com/yagop/node-telegram-bot-api/issues/540
 const READABILITY_API_URL = getApiUrlFromEnv();
-const IV_RHASH = process.env.IV_RHASH ?? "261b1281223eaa";
+const IV_RHASH = process.env.IV_RHASH; // Track rules.iv in Telegram at first
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
 const bot = new TelegramBot(BOT_TOKEN);
