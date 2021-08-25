@@ -18,11 +18,8 @@ module.exports = async (request, response) => {
       if (!url) {
         return;
       }
-      const metaUrl = `${READABILITY_API_URL}?url=${encodeURIComponent(
-        url
-      )}&type=json`;
-      const meta = await (await fetch(metaUrl)).json();
-      const message = await renderMessage(url, meta);
+      const meta = await fetchMeta(url);
+      const message = renderMessage(url, meta);
       try {
         await bot.answerInlineQuery(
           inlineQuery.id,
@@ -56,8 +53,8 @@ module.exports = async (request, response) => {
         if (url) {
           let rendered;
           try {
-            const meta = await (await fetch(metaUrl)).json();
-            rendered = await renderMessage(url, meta);
+            const meta = await fetchMeta(url);
+            rendered = renderMessage(url, meta);
           } catch (e) {
             if (message.chat.type === "private") {
               await bot.sendMessage(
@@ -96,7 +93,7 @@ module.exports = async (request, response) => {
   }
 };
 
-async function renderMessage(url, meta) {
+function renderMessage(url, meta) {
   const readableUrl = `${READABILITY_API_URL}?url=${encodeURIComponent(url)}`;
   const ivUrl = `https://t.me/iv?url=${encodeURIComponent(
     readableUrl
@@ -136,4 +133,21 @@ function getApiUrlFromEnv() {
   } else {
     return "https://readability-bot.vercel.app/api/readability";
   }
+}
+
+async function fetchMeta(url) {
+  const metaUrl = `${READABILITY_API_URL}?url=${encodeURIComponent(
+    url
+  )}&type=json`;
+  const resp = await fetch(metaUrl);
+  if (!resp.ok) {
+    let body = "";
+    try {
+      body = await resp.text();
+    } catch (_e) {}
+    throw new Error(
+      `Upstream HTTP Error: ${response.status} ${response.statusText}\n${body}`
+    );
+  }
+  return await resp.json();
 }

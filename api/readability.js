@@ -2,7 +2,7 @@ const { Readability } = require("@mozilla/readability");
 const fetch = require("node-fetch");
 const { JSDOM } = require("jsdom");
 
-const APP_URL = process.env.APP_URL ?? ("https://" + process.env.VERCEL_URL);
+const APP_URL = process.env.APP_URL ?? "https://" + process.env.VERCEL_URL;
 
 module.exports = async (request, response) => {
   if ((request.headers["user-agent"] ?? "").includes("readability-bot")) {
