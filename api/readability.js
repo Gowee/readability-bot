@@ -23,15 +23,12 @@ module.exports = async (request, response) => {
     upstreamResponse = await fetch(url, {
       headers: constructUpstreamRequestHeaders(request.headers),
     });
-    const t = await upstreamResponse.textConverted();
-    console.log(t);
-    const dom = new JSDOM(t, { url: url });
+    const dom = new JSDOM(await upstreamResponse.textConverted(), { url: url });
     const doc = dom.window.document;
     const reader = new Readability(
       /*selector ? doc.querySelector(selector) :*/ doc
     );
     const article = reader.parse();
-    console.log(dom, doc);
     const lang = extractLang(doc);
     meta = Object.assign({ url, lang }, article);
     meta.byline = stripRepeatedWhitespace(meta.byline);
