@@ -23,15 +23,16 @@ module.exports = async (request, response) => {
     upstreamResponse = await fetch(url, {
       headers: constructUpstreamRequestHeaders(request.headers),
     });
-    const dom = new JSDOM(await upstreamResponse.textConverted(), { url: url });
+    const t = await upstreamResponse.textConverted();
+    console.log(t);
+    const dom = new JSDOM(t, { url: url });
     const doc = dom.window.document;
     const reader = new Readability(
       /*selector ? doc.querySelector(selector) :*/ doc
     );
     const article = reader.parse();
-    const lang =
-      doc.querySelector("html").getAttribute("lang") ??
-      doc.querySelector("body").getAttribute("lang");
+    console.log(dom, doc);
+    const lang = extractLang(doc);
     meta = Object.assign({ url, lang }, article);
     meta.byline = stripRepeatedWhitespace(meta.byline);
     meta.siteName = stripRepeatedWhitespace(meta.siteName);
@@ -128,7 +129,7 @@ function render(meta) {
       padding-bottom: 1.0rem;
     }
 
-    hr { 
+    hr {
       marginLeft: 1rem;
       marginRight: 1rem;
     }
@@ -148,7 +149,7 @@ function render(meta) {
       </address>
     </header>
     <article class="section article-body is-size-5 content">
-      ${content}  
+      ${content}
     </article>
 
     <hr />
@@ -195,3 +196,13 @@ const EASTER_EGG_PAGE = `<html>
 </body>
 </html>
 `;
+
+function extractLang(doc) {
+  // Some malformed HTMLs may confuse querySelector.
+  return (
+    (doc.querySelector("html") &&
+      doc.querySelector("html").getAttribute("lang")) ??
+    (doc.querySelector("body") &&
+      doc.querySelector("body").getAttribute("lang"))
+  );
+}
