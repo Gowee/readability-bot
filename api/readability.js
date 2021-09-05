@@ -1,6 +1,8 @@
 const { Readability } = require("@mozilla/readability");
 const fetch = require("node-fetch");
 const { JSDOM } = require("jsdom");
+const { encode: htmlEntitiesEscape } = require("html-entities");
+const createDOMPurify = require("dompurify");
 
 const APP_URL = process.env.APP_URL ?? "https://" + process.env.VERCEL_URL;
 
@@ -9,8 +11,11 @@ module.exports = async (request, response) => {
     response.send(EASTER_EGG_PAGE);
     return;
   }
-  const { url, /*selector,*/ type } = request.query;
-  if (!url & (type !== "json")) {
+  let { url, /*selector,*/ type, format } = request.query;
+  if (!format) {
+    format = type; // the type param will be deprecated in favor of format
+  }
+  if (!url & (format !== "json")) {
     response.redirect(APP_URL);
     return;
   }
@@ -24,7 +29,9 @@ module.exports = async (request, response) => {
       headers: constructUpstreamRequestHeaders(request.headers),
     });
     const dom = new JSDOM(await upstreamResponse.textConverted(), { url: url });
+    const DOMPurify = createDOMPurify(dom.window);
     const doc = dom.window.document;
+    fixImgLazyLoadFromDataSrc(doc);
     const reader = new Readability(
       /*selector ? doc.querySelector(selector) :*/ doc
     );
@@ -34,6 +41,7 @@ module.exports = async (request, response) => {
     meta.byline = stripRepeatedWhitespace(meta.byline);
     meta.siteName = stripRepeatedWhitespace(meta.siteName);
     meta.excerpt = stripRepeatedWhitespace(meta.excerpt);
+    meta.content = DOMPurify.sanitize(meta.content);
   } catch (e) {
     response.status(500).send(e.toString());
     return;
@@ -42,7 +50,7 @@ module.exports = async (request, response) => {
     "cache-control":
       upstreamResponse.headers["cache-control"] ?? "public, max-age=900",
   };
-  if (type === "json") {
+  if (format === "json") {
     response.json(meta, { headers });
   } else {
     response.send(render(meta), { headers });
@@ -57,10 +65,10 @@ function render(meta) {
     [author, siteName].filter((v) => v).join(" • ") || new URL(url).hostname;
   siteName = siteName || new URL(url).hostname;
   const ogSiteName = siteName
-    ? `<meta property="og:site_name" content="${siteName}">`
+    ? `<meta property="og:site_name" content="${htmlEntitiesEscape(siteName)}">`
     : "";
   const ogAuthor = byline
-    ? `<meta property="article:author" content="${byline}">`
+    ? `<meta property="article:author" content="${htmlEntitiesEscape(byline)}">`
     : "";
   return `<!DOCTYPE html>
 <html ${langAttr}>
@@ -72,14 +80,14 @@ function render(meta) {
   <meta name="referrer" content="same-origin">
   <meta http-equiv="Content-Security-Policy" content="script-src 'none';">
   <meta http-equiv="Content-Security-Policy" content="frame-src 'none';">
-  <meta name="description" content="${excerpt}">
+  <meta name="description" content="${htmlEntitiesEscape(excerpt)}">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="${title}">
+  <meta property="og:title" content="${htmlEntitiesEscape(title)}">
   ${ogSiteName}
-  <meta property="og:description" content="${excerpt}">
+  <meta property="og:description" content="${htmlEntitiesEscape(excerpt)}">
   ${ogAuthor}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
-  <title>${title}</title>
+  <title>${htmlEntitiesEscape(title)}</title>
   <style>
     * {
       font-family: serif;
@@ -89,12 +97,8 @@ function render(meta) {
       line-height: 1.5;
     }
 
-    p:not(:first-child) {
+    p {
       margin-top: 1.5rem;
-
-    }
-
-    p:not(:last-child) {
       margin-bottom: 1.5rem;
     }
 
@@ -118,7 +122,7 @@ function render(meta) {
     }
 
     .article-body {
-      padding-top: 1.5rem;
+      padding-top: 0rem;
       padding-bottom: 0rem;
     }
 
@@ -138,11 +142,11 @@ function render(meta) {
   <main class="container is-max-desktop">
     <header class="section article-header">
       <h1 class="title">
-        ${title}
+        ${htmlEntitiesEscape(title)}
       </h1>
       <address class="subtitle byline" >
         <a rel="author" href="${url}" target="_blank">
-        ${byline}
+        ${htmlEntitiesEscape(byline)}
         </a>
       </address>
     </header>
@@ -152,7 +156,9 @@ function render(meta) {
 
     <hr />
     <footer class="section page-footer is-size-7">
-      <small>The article is scraped and extracted from <a href="${url}" target="_blank">${siteName}</a> by <a href="${APP_URL}">readability-bot</a> at <time datetime="${genDate.toISOString()}">${genDate.toString()}</time>.</small>
+      <small>The article is scraped and extracted from <a href="${url}" target="_blank">${htmlEntitiesEscape(
+    siteName
+  )}</a> by <a href="${APP_URL}">readability-bot</a> at <time datetime="${genDate.toISOString()}">${genDate.toString()}</time>.</small>
     </footer>
   </main>
 </body>
@@ -203,4 +209,12 @@ function extractLang(doc) {
     (doc.querySelector("body") &&
       doc.querySelector("body").getAttribute("lang"))
   );
+}
+
+function fixImgLazyLoadFromDataSrc(doc) {
+  // sample page: https://mp.weixin.qq.com/s/U07oNCwtiAMGnBvYZXPuMg
+  console.log(doc.querySelectorAll("body img:not([src])[data-src]"));
+  for (const img of doc.querySelectorAll("body img:not([src])[data-src]")) {
+    img.src = img.dataset.src;
+  }
 }

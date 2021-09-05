@@ -138,7 +138,7 @@ function getApiUrlFromEnv() {
 async function fetchMeta(url) {
   const metaUrl = `${READABILITY_API_URL}?url=${encodeURIComponent(
     url
-  )}&type=json`;
+  )}&format=json`;
   const resp = await fetch(metaUrl);
   if (!resp.ok) {
     let body = "";
