@@ -7,7 +7,11 @@ const READABILITY_API_URL = getApiUrlFromEnv();
 const IV_RHASH = process.env.IV_RHASH; // Track rules.iv in Telegram at first
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
+const START_MESSAGE = `Just send an article link here.
+It will be converted to a readable webpage with Instant View.`;
+
 const bot = new TelegramBot(BOT_TOKEN);
+console.log(BOT_TOKEN);
 
 module.exports = async (request, response) => {
   try {
@@ -44,10 +48,13 @@ module.exports = async (request, response) => {
       }
     } else if (message && message.text.trim()) {
       if (message.text.trim() === "/start") {
-        await bot.sendMessage(
-          message.chat.id,
-          "Just send an article link here. It will be converted to a readable webpage with Instant View. Inline mode is also supported."
-        );
+        await bot.sendMessage(message.chat.id, START_MESSAGE, {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "Try Inline Mode", switch_inline_query: "" }],
+            ],
+          },
+        });
       } else {
         const url = tryFixUrl(message.text);
         if (url) {
