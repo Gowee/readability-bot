@@ -46,14 +46,11 @@ module.exports = async (request, response) => {
     response.status(500).send(e.toString());
     return;
   }
-  const headers = {
-    "cache-control":
-      upstreamResponse.headers["cache-control"] ?? "public, max-age=900",
-  };
+  response.setHeader('cache-control', upstreamResponse.headers["cache-control"] ?? "public, max-age=900");
   if (format === "json") {
-    response.json(meta, { headers });
+    response.json(meta);
   } else {
-    response.send(render(meta), { headers });
+    response.send(render(meta));
   }
 };
 
