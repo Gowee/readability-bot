@@ -23,6 +23,7 @@
     "encoding": "^0.1.13",
     "html-entities": "^2.3.2",
     "jsdom": "^17.0.0",
+    "lambda-rate-limiter": "^3.0.1",
     "node-fetch": "^2.6.1",
     "node-telegram-bot-api": "^0.54.0",
     "normalize-url": "^6.1.0",
