@@ -2,12 +2,20 @@
 # Maintained by: Hung-I WANG <whygowe@gmail.com>
 ~version: "2.1"
 
-?path: /api/readability\?url=(.+)
+?path: /api/readability\?url=(.+)(?!=json)
 
 
 body: //body
 @remove: $body//header
 
-# Fix: Element <img> is not supported in <p>: 
-# https://stackoverflow.com/questions/54969371/telegrams-instant-view-api-element-img-is-not-supported-in-p
+# Fixing: Element <img> is not supported in <p>:
+#    ref: https://stackoverflow.com/questions/54969371/telegrams-instant-view-api-element-img-is-not-supported-in-p
 @replace_tag(<figure>): $body//p[.//img]
+
+# Fixing: Element <img> is not supported in <a>, ...
+#    ref: https://stackoverflow.com/questions/55076621/element-img-is-not-supported-in-a
+@split_parent: //a/img
+# @split_parent: //p/img
+@split_parent: //strong/img
+@split_parent: //td/img
+
