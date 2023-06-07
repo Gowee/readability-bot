@@ -6,28 +6,21 @@ const createDOMPurify = require("dompurify");
 
 const APP_URL = process.env.APP_URL ?? "https://" + process.env.VERCEL_URL;
 
-// const rateLimiter = require("lambda-rate-limiter")({
-//   interval: 2 * 60 * 1000 // Our rate-limit interval, one minute
-// }).check;
+const rateLimiter = require("lambda-rate-limiter")({
+  interval: 15 * 60 * 1000 // Our rate-limit interval, one minute
+}).check;
 
 module.exports = async (request, response) => {
-    if (request.headers['x-real-ip'] === "125.99.240.190") {
-        response.redirect("https://www.gov.cn")
-        //response.status(429).send("Rate limit reached")
-        return
-    }
-  console.log(request.headers)
   if ((request.headers["user-agent"] ?? "").includes("readability-bot")) {
     response.send(EASTER_EGG_PAGE);
     return;
   }
-  // TODO: exempt Telegram and Vercel IPs
-  // try {
-  //   await rateLimiter(7, request.headers["x-real-ip"]);
-  // }
-  // catch (e) {
-  //   response.status(429).send("Rate limit reached")
-  // }
+  try {
+    await rateLimiter(64, request.headers["x-real-ip"]);
+  }
+  catch (e) {
+    response.status(429).send("Rate limit reached")
+  }
   let { url, /*selector,*/ type, format } = request.query;
   if (!format) {
     format = type; // the type param will be deprecated in favor of format
