@@ -56,7 +56,7 @@ bot.sendMessage(CHANNEL, message, (parseMode = "html"));
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/gowee/readability-bot&template=svelte)
 
 And, some [environment variables](https://vercel.com/docs/concepts/projects/environment-variables) are expected:
-- [`BOT_TOKEN`](https://core.telegram.org/bots/features#botfather): REQUIRED for the bot service. Do not forget to [set the webhook address](https://core.telegram.org/bots/webhooks#how-do-i-set-a-webhook-for-either-type) to Vercel app URL.
+- [`BOT_TOKEN`](https://core.telegram.org/bots/features#botfather): REQUIRED for the bot service. Do not forget to [set the webhook address](https://core.telegram.org/bots/webhooks#how-do-i-set-a-webhook-for-either-type) to `{APP_URL}/api/webhook`.
 - `APP_URL`: Optional, inferred automatically from Vercel runtime. e.g. `https://readability-bot.vercel.app`
 - `READABILITY_API_URL`: Optional, inferred automatically from Vercel runtime. e.g. `https://readability-bot.vercel.app/api/readability`
 - `IV_RHASH`: Optional, [71b64d09b0a20d](rules.iv) is used by default.
