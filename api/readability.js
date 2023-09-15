@@ -167,9 +167,10 @@ function render(meta) {
 function constructUpstreamRequestHeaders(headers) {
   return {
     "user-agent": (headers["user-agent"] ?? "") + ` readability-bot/0.0`,
-    "x-real-ip": headers["x-real-ip"],
+    "referer": "https://www.google.com/?feeling-lucky"
+    /*"x-real-ip": headers["x-real-ip"],
     "x-forwarded-for":
-      headers["x-real-ip"] + ", " + (headers["x-forwarded-for"] ?? ""),
+      headers["x-real-ip"] + ", " + (headers["x-forwarded-for"] ?? ""),*/
   };
 }
 
