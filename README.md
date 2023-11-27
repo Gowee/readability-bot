@@ -26,7 +26,7 @@ Assuming `ARTICLE_TITLE="Lorem Ipsum"`, `ARTICLE_URL="https://example.org/blog-p
 **JavaScript**:
 
 ```js
-const readableUrl = `https://readability-bot.vercel.app?url=${encodeURIComponent(
+const readableUrl = `https://readability-bot.vercel.app/api/readability?url=${encodeURIComponent(
   ARTICLE_URL
 )}`;
 const ivUrl = `https://t.me/iv?url=${encodeURIComponent(
@@ -42,7 +42,7 @@ bot.sendMessage(CHANNEL, message, (parseMode = "html"));
 ```py
   import urllib.parse import quote as percent_encode
   # ... ...
-  readable_url = f'https://readability-bot.vercel.app?url={percent_encode(ARTICLE_URL, safe="")}';
+  readable_url = f'https://readability-bot.vercel.app/api/readability?url={percent_encode(ARTICLE_URL, safe="")}';
   iv_url = f'https://t.me/iv?url={percent_encode(readable_url, safe="")}&rhash=71b64d09b0a20d';
 
   message = f'<a href="{iv_url}"> </a><a href="{article_url}">{articleTitle}</a>';
