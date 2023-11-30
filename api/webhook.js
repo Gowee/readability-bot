@@ -107,7 +107,7 @@ function renderMessage(url, meta) {
   )}&rhash=${IV_RHASH}`;
   return `<a href="${ivUrl}"> </a><a href="${readableUrl}">${
     meta.title ?? "Untitlted Article"
-  }</a>\n${
+  }</a>\n ${
     meta.byline ?? meta.siteName ?? new URL(url).hostname
   } (<a href="${url}">source</a>)`;
 }
