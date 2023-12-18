@@ -9,14 +9,23 @@
 body: //body
 @remove: $body//header
 
-# Fixing: Element <img> is not supported in <p>:
-#    ref: https://stackoverflow.com/questions/54969371/telegrams-instant-view-api-element-img-is-not-supported-in-p
+# Fix: Element <img> is not supported in <p>: 
+# https://stackoverflow.com/questions/54969371/telegrams-instant-view-api-element-img-is-not-supported-in-p
 @replace_tag(<figure>): $body//p[.//img]
 
-# Fixing: Element <img> is not supported in <a>, ...
-#    ref: https://stackoverflow.com/questions/55076621/element-img-is-not-supported-in-a
+# To fix: Element <img> is not supported in <a>
+# From: https://stackoverflow.com/questions/55076621/element-img-is-not-supported-in-a
 @split_parent: //a/img
 # @split_parent: //p/img
 @split_parent: //strong/img
 @split_parent: //td/img
+
+# Generate `figure>img` by cloning and manipulating `meta[property="og:image"]` and take it as the cover.
+@clone: (/html/head/meta[@property="og:image"])[0]
+@replace_tag("<img>"): $@
+@before_el(//article): $@
+$i: $@
+@set_attr("src", @content): $@
+@wrap("<figure>"): $i
+cover: $@
 
