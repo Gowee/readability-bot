@@ -37,7 +37,7 @@ module.exports = async (request, response) => {
     );
     const article = reader.parse();
     const lang = extractLang(doc);
-    const ogImage = document.querySelector('meta[property="og:image"]');
+    const ogImage = doc.querySelector('meta[property="og:image"]');
     meta = Object.assign({ url, lang }, article);
     meta.byline = stripRepeatedWhitespace(meta.byline);
     meta.siteName = stripRepeatedWhitespace(meta.siteName);
