@@ -37,11 +37,13 @@ module.exports = async (request, response) => {
     );
     const article = reader.parse();
     const lang = extractLang(doc);
+    const ogImage = document.querySelector('meta[property="og:image"]');
     meta = Object.assign({ url, lang }, article);
     meta.byline = stripRepeatedWhitespace(meta.byline);
     meta.siteName = stripRepeatedWhitespace(meta.siteName);
     meta.excerpt = stripRepeatedWhitespace(meta.excerpt);
     meta.content = DOMPurify.sanitize(meta.content);
+    meta.imageUrl = (ogImage || {}).content;
   } catch (e) {
     response.status(500).send(e.toString());
     return;
@@ -55,7 +57,7 @@ module.exports = async (request, response) => {
 };
 
 function render(meta) {
-  let { lang, title, byline: author, siteName, content, url, excerpt } = meta;
+  let { lang, title, byline: author, siteName, content, url, excerpt, imageUrl } = meta;
   const genDate = new Date();
   const langAttr = lang ? `lang="${lang}"` : "";
   const byline =
@@ -66,6 +68,8 @@ function render(meta) {
     : "";
   const ogAuthor = byline
     ? `<meta property="article:author" content="${htmlEntitiesEscape(byline)}">`
+    : "";
+  const ogImage = imageUrl ? `<meta property="og:image" content="${htmlEntitiesEscape(imageUrl)}"/>`
     : "";
   return `<!DOCTYPE html>
 <html ${langAttr}>
@@ -83,6 +87,7 @@ function render(meta) {
   ${ogSiteName}
   <meta property="og:description" content="${htmlEntitiesEscape(excerpt)}">
   ${ogAuthor}
+  ${ogImage}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
   <title>${htmlEntitiesEscape(title)}</title>
   <style>
