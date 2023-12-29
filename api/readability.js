@@ -32,6 +32,13 @@ module.exports = async (request, response) => {
     const DOMPurify = createDOMPurify(dom.window);
     const doc = dom.window.document;
     fixImgLazyLoadFromDataSrc(doc);
+    let tl_article_content = null;
+    if ((new URL(url)).hostname === "telegra.ph") {
+      const ac = doc.querySelector(".tl_article_content");
+      if (ac) {
+        tl_article_content = ac.innerHTML;
+      }
+    }
     const reader = new Readability(
       /*selector ? doc.querySelector(selector) :*/ doc
     );
@@ -39,18 +46,10 @@ module.exports = async (request, response) => {
     const lang = extractLang(doc);
     const ogImage = doc.querySelector('meta[property="og:image"]');
     meta = Object.assign({ url, lang }, article);
-
-    if ((new URL(url)).hostname === "telegra.ph") {
-      const ac = doc.querySelector(".tl_article_content");
-      if (ac) {
-        meta.content = ac.innerHTML;
-      }
-    }
-
     meta.byline = stripRepeatedWhitespace(meta.byline);
     meta.siteName = stripRepeatedWhitespace(meta.siteName);
     meta.excerpt = stripRepeatedWhitespace(meta.excerpt);
-    meta.content = DOMPurify.sanitize(meta.content);
+    meta.content = DOMPurify.sanitize(tl_article_content ?? meta.content);
     meta.imageUrl = (ogImage || {}).content;
   } catch (e) {
     response.status(500).send(e.toString());
