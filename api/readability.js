@@ -4,7 +4,7 @@ const { JSDOM } = require("jsdom");
 const { encode: htmlEntitiesEscape } = require("html-entities");
 const createDOMPurify = require("dompurify");
 
-const APP_URL = process.env.APP_URL ?? "https://" + process.env.VERCEL_URL;
+const { APP_URL, constructIvUrl } = require("_common.js");
 
 module.exports = async (request, response) => {
   if ((request.headers["user-agent"] ?? "").includes("readability-bot")) {
@@ -39,6 +39,14 @@ module.exports = async (request, response) => {
     const lang = extractLang(doc);
     const ogImage = doc.querySelector('meta[property="og:image"]');
     meta = Object.assign({ url, lang }, article);
+
+    if ((new URL(url)).hostname === "telegra.ph") {
+      const ac = doc.querySelector(".tl_article_content");
+      if (ac) {
+        meta.content = ac.innerHTML;
+      }
+    }
+
     meta.byline = stripRepeatedWhitespace(meta.byline);
     meta.siteName = stripRepeatedWhitespace(meta.siteName);
     meta.excerpt = stripRepeatedWhitespace(meta.excerpt);
@@ -71,6 +79,7 @@ function render(meta) {
     : "";
   const ogImage = imageUrl ? `<meta property="og:image" content="${htmlEntitiesEscape(imageUrl)}"/>`
     : "";
+
   return `<!DOCTYPE html>
 <html ${langAttr}>
 
@@ -158,7 +167,7 @@ function render(meta) {
 
     <hr />
     <footer class="section page-footer is-size-7">
-      <small>The article is scraped and extracted from <a href="${url}" target="_blank">${htmlEntitiesEscape(
+      <small>The article(<a title="Telegram Intant View link" href="${constructIvUrl(url)}">IV</a>) is scraped and extracted from <a title="Source link" href="${url}" target="_blank">${htmlEntitiesEscape(
     siteName
   )}</a> by <a href="${APP_URL}">readability-bot</a> at <time datetime="${genDate.toISOString()}">${genDate.toString()}</time>.</small>
     </footer>

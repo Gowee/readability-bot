@@ -2,10 +2,9 @@ const crypto = require("crypto");
 const fetch = require("node-fetch");
 const TelegramBot = require("node-telegram-bot-api");
 
+const { READABILITY_API_URL, constructIvUrl, BOT_TOKEN } = require("_common.js");
+
 // process.env.NTBA_FIX_319 = "test"; // https://github.com/yagop/node-telegram-bot-api/issues/540
-const READABILITY_API_URL = getApiUrlFromEnv();
-const IV_RHASH = process.env.IV_RHASH; // Track rules.iv in Telegram at first
-const BOT_TOKEN = process.env.BOT_TOKEN;
 
 const START_MESSAGE = `Just send an article link here.
 It will be converted to a readable webpage with Instant View.`;
@@ -101,15 +100,10 @@ module.exports = async (request, response) => {
 };
 
 function renderMessage(url, meta) {
-  const readableUrl = `${READABILITY_API_URL}?url=${encodeURIComponent(url)}`;
-  const ivUrl = `https://t.me/iv?url=${encodeURIComponent(
-    readableUrl
-  )}&rhash=${IV_RHASH}`;
-  return `<a href="${ivUrl}"> </a><a href="${readableUrl}">${
-    meta.title ?? "Untitlted Article"
-  }</a>\n ${
-    meta.byline ?? meta.siteName ?? new URL(url).hostname
-  } (<a href="${url}">source</a>)`;
+  const ivUrl = constructIvUrl();
+  return `<a href="${ivUrl}"> </a><a href="${readableUrl}">${meta.title ?? "Untitlted Article"
+    }</a>\n ${meta.byline ?? meta.siteName ?? new URL(url).hostname
+    } (<a href="${url}">source</a>)`;
 }
 
 function tryFixUrl(url) {
@@ -132,16 +126,6 @@ function sha256(input) {
     .digest("hex");
 }
 
-function getApiUrlFromEnv() {
-  if (process.env.READABILITY_API_URL) {
-    return process.env.READABILITY_API_URL;
-  } else if (process.env.VERCEL_URL) {
-    return "https://" + process.env.VERCEL_URL + "/api/readability";
-  } else {
-    return "https://readability-bot.vercel.app/api/readability";
-  }
-}
-
 async function fetchMeta(url) {
   const metaUrl = `${READABILITY_API_URL}?url=${encodeURIComponent(
     url
@@ -151,7 +135,7 @@ async function fetchMeta(url) {
     let body = "";
     try {
       body = await resp.text();
-    } catch (_e) {}
+    } catch (_e) { }
     throw new Error(
       `Upstream HTTP Error: ${response.status} ${response.statusText}\n${body}`
     );
