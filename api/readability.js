@@ -4,7 +4,7 @@ const { JSDOM } = require("jsdom");
 const { encode: htmlEntitiesEscape } = require("html-entities");
 const createDOMPurify = require("dompurify");
 
-const { APP_URL, constructIvUrl } = require("_common.js");
+const { APP_URL, constructIvUrl } = require("./_common.js");
 
 module.exports = async (request, response) => {
   if ((request.headers["user-agent"] ?? "").includes("readability-bot")) {

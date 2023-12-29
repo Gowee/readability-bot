@@ -2,7 +2,7 @@ const crypto = require("crypto");
 const fetch = require("node-fetch");
 const TelegramBot = require("node-telegram-bot-api");
 
-const { READABILITY_API_URL, constructIvUrl, BOT_TOKEN } = require("_common.js");
+const { READABILITY_API_URL, constructIvUrl, BOT_TOKEN } = require("./_common.js");
 
 // process.env.NTBA_FIX_319 = "test"; // https://github.com/yagop/node-telegram-bot-api/issues/540
 
