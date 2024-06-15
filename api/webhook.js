@@ -2,7 +2,7 @@ const crypto = require("crypto");
 const fetch = require("node-fetch");
 const TelegramBot = require("node-telegram-bot-api");
 
-const { READABILITY_API_URL, constructIvUrl, BOT_TOKEN } = require("./_common.js");
+const { READABILITY_API_URL, BOT_TOKEN, constructIvUrl, constructReadableUrl } = require("./_common.js");
 
 // process.env.NTBA_FIX_319 = "test"; // https://github.com/yagop/node-telegram-bot-api/issues/540
 
@@ -100,7 +100,8 @@ module.exports = async (request, response) => {
 };
 
 function renderMessage(url, meta) {
-  const ivUrl = constructIvUrl();
+  const readableUrl = constructReadableUrl(url);
+  const ivUrl = constructIvUrl(url);
   return `<a href="${ivUrl}"> </a><a href="${readableUrl}">${meta.title ?? "Untitlted Article"
     }</a>\n ${meta.byline ?? meta.siteName ?? new URL(url).hostname
     } (<a href="${url}">source</a>)`;

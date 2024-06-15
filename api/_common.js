@@ -13,8 +13,13 @@ function getApiUrlFromEnv() {
   }
 }
 
-export function constructIvUrl(url) {
+export function constructReadableUrl(url) {
   const readableUrl = `${READABILITY_API_URL}?url=${encodeURIComponent(url)}`;
+  return readableUrl;
+}
+
+export function constructIvUrl(url) {
+  const readableUrl = constructReadableUrl(url);
   return `https://t.me/iv?url=${encodeURIComponent(
     readableUrl
   )}&rhash=${IV_RHASH}`;
