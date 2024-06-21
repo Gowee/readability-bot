@@ -36,6 +36,10 @@ module.exports = async (request, response) => {
     if ((new URL(url)).hostname === "telegra.ph") {
       const ac = doc.querySelector(".tl_article_content");
       if (ac) {
+        // CSS rules in https://telegra.ph/css/core.min.css
+        ac.querySelector("h1").style.display = "none";
+        ac.querySelector("address").style.display = "none";
+
         tl_article_content = ac.innerHTML;
       }
     }
