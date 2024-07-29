@@ -246,14 +246,18 @@ function fixImgLazyLoadFromDataSrc(doc) {
 function fixXiaohongshuImages(doc) {
   // sample page:
   // https://www.xiaohongshu.com/explore/66a589ef000000002701c69e
-  const container = doc.createElement("div");
-  doc.querySelector("#detail-desc").prepend(container);
+  const target = doc.querySelector("#detail-desc") ?? doc.querySelector("body");
+  // some magic to make readability.js and telegra.ph happy together
+  const container = doc.createElement("span");
+  target.prepend(container);
   for (const ogImage of doc.querySelectorAll('meta[property="og:image"], meta[name="og:image"]')) {
     const url = ogImage.content;
     // console.log("xhsImg", url);
+    const imgP = doc.createElement("p");
     const img = doc.createElement("img");
     img.src = url;
-    container.append(img);
+    imgP.append(img);
+    container.append(imgP);
   }
 }
 
