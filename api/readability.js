@@ -32,7 +32,14 @@ module.exports = async (request, response) => {
     const DOMPurify = createDOMPurify(dom.window);
     const doc = dom.window.document;
     fixImgLazyLoadFromDataSrc(doc);
-    let tl_article_content = null;
+    if ((new URL(url)).hostname === "www.xiaohongshu.com") {
+      fixXiaohongshuImages(doc);
+    }
+    else if ((new URL(url)).hostname === "mp.weixin.qq.com") {
+      fixWeixinArticle(doc);
+    }
+
+    let article_content = null;
     if ((new URL(url)).hostname === "telegra.ph") {
       const ac = doc.querySelector(".tl_article_content");
       if (ac) {
@@ -40,20 +47,22 @@ module.exports = async (request, response) => {
         ac.querySelector("h1").style.display = "none";
         ac.querySelector("address").style.display = "none";
 
-        tl_article_content = ac.innerHTML;
+        article_content = ac.innerHTML;
       }
     }
+
     const reader = new Readability(
       /*selector ? doc.querySelector(selector) :*/ doc
     );
     const article = reader.parse();
     const lang = extractLang(doc);
-    const ogImage = doc.querySelector('meta[property="og:image"]');
+    // some stupid websites like xiaohongshu.com use the non-standard "name" attr
+    const ogImage = doc.querySelector('meta[property="og:image"], meta[name="og:image"]');
     meta = Object.assign({ url, lang }, article);
     meta.byline = stripRepeatedWhitespace(meta.byline);
     meta.siteName = stripRepeatedWhitespace(meta.siteName);
     meta.excerpt = stripRepeatedWhitespace(meta.excerpt);
-    meta.content = DOMPurify.sanitize(tl_article_content ?? meta.content);
+    meta.content = DOMPurify.sanitize(article_content ?? meta.content);
     meta.imageUrl = (ogImage || {}).content;
   } catch (e) {
     response.status(500).send(e.toString());
@@ -232,4 +241,24 @@ function fixImgLazyLoadFromDataSrc(doc) {
   for (const img of doc.querySelectorAll("body img:not([src])[data-src]")) {
     img.src = img.dataset.src;
   }
+}
+
+function fixXiaohongshuImages(doc) {
+  // sample page:
+  // https://www.xiaohongshu.com/explore/66a589ef000000002701c69e
+  const container = doc.createElement("div");
+  doc.querySelector("#detail-desc").prepend(container);
+  for (const ogImage of doc.querySelectorAll('meta[property="og:image"], meta[name="og:image"]')) {
+    const url = ogImage.content;
+    // console.log("xhsImg", url);
+    const img = doc.createElement("img");
+    img.src = url;
+    container.append(img);
+  }
+}
+
+function fixWeixinArticle(doc) {
+  // sample page: https://mp.weixin.qq.com/s/ayHC7MpG6Jpiogzp-opQFw
+  const jc = doc.querySelector("#js_content, .rich_media_content");
+  jc.style = ""; // remove visibility: hidden
 }
