@@ -4,7 +4,7 @@ const { JSDOM } = require("jsdom");
 const { encode: htmlEntitiesEscape } = require("html-entities");
 const createDOMPurify = require("dompurify");
 
-const { APP_URL, constructIvUrl } = require("./_common.js");
+const { APP_URL, constructIvUrl, DEFAULT_USER_AGENT_SUFFIX, FALLBACK_USER_AGENT } = require("./_common.js");
 
 module.exports = async (request, response) => {
   if ((request.headers["user-agent"] ?? "").includes("readability-bot")) {
@@ -25,9 +25,12 @@ module.exports = async (request, response) => {
       response.status(400).send("Invalid URL");
       return;
     }
+    const headers = constructUpstreamRequestHeaders(request.headers);
+    console.debug("RH: ", headers);
     upstreamResponse = await fetch(url, {
-      headers: constructUpstreamRequestHeaders(request.headers),
+      headers,
     });
+    console.debug("UP: ", upstreamResponse);
     const dom = new JSDOM(await upstreamResponse.textConverted(), { url: url });
     const DOMPurify = createDOMPurify(dom.window);
     const doc = dom.window.document;
@@ -65,11 +68,13 @@ module.exports = async (request, response) => {
     meta.content = DOMPurify.sanitize(article_content ?? meta.content);
     meta.imageUrl = (ogImage || {}).content;
   } catch (e) {
+    console.error(e);
     response.status(500).send(e.toString());
     return;
   }
   response.setHeader('cache-control', upstreamResponse.headers["cache-control"] ?? "public, max-age=900");
   if (format === "json") {
+    console.debug(meta);
     response.json(meta);
   } else {
     response.send(render(meta));
@@ -191,8 +196,15 @@ function render(meta) {
 }
 
 function constructUpstreamRequestHeaders(headers) {
+  let ua = headers["user-agent"];
+  if (ua && ua.indexOf("node-fetch") === -1) {
+    ua += " " + DEFAULT_USER_AGENT_SUFFIX;
+  }
+  else {
+    ua = FALLBACK_USER_AGENT;
+  }
   return {
-    "user-agent": (headers["user-agent"] ?? "") + ` readability-bot/0.0`,
+    "user-agent": ua,
     "referer": "https://www.google.com/?feeling-lucky"
     /*"x-real-ip": headers["x-real-ip"],
     "x-forwarded-for":
@@ -237,7 +249,7 @@ function extractLang(doc) {
 
 function fixImgLazyLoadFromDataSrc(doc) {
   // sample page: https://mp.weixin.qq.com/s/U07oNCwtiAMGnBvYZXPuMg
-  console.log(doc.querySelectorAll("body img:not([src])[data-src]"));
+  console.debug(doc.querySelectorAll("body img:not([src])[data-src]"));
   for (const img of doc.querySelectorAll("body img:not([src])[data-src]")) {
     img.src = img.dataset.src;
   }
@@ -264,5 +276,7 @@ function fixXiaohongshuImages(doc) {
 function fixWeixinArticle(doc) {
   // sample page: https://mp.weixin.qq.com/s/ayHC7MpG6Jpiogzp-opQFw
   const jc = doc.querySelector("#js_content, .rich_media_content");
-  jc.style = ""; // remove visibility: hidden
+  if (jc) {
+    jc.style = ""; // remove visibility: hidden
+  }
 }

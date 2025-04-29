@@ -30,7 +30,7 @@ module.exports = async (request, response) => {
             {
               type: "article",
               id: sha256(url),
-              title: meta.title,
+              title: meta.title ?? "<UNTITLED>",
               description: meta.excerpt,
               input_message_content: {
                 message_text: message,
