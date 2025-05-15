@@ -138,7 +138,7 @@ async function fetchMeta(url) {
       body = await resp.text();
     } catch (_e) { }
     throw new Error(
-      `Upstream HTTP Error: ${response.status} ${response.statusText}\n${body}`
+      `Upstream HTTP Error: ${resp.status} ${resp.statusText}\n${body}`
     );
   }
   return await resp.json();
