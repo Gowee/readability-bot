@@ -59,7 +59,7 @@ And, some [environment variables](https://vercel.com/docs/concepts/projects/envi
 - [`BOT_TOKEN`](https://core.telegram.org/bots/features#botfather): REQUIRED for the bot service. Do not forget to [set the webhook address](https://core.telegram.org/bots/webhooks#how-do-i-set-a-webhook-for-either-type) to `{APP_URL}/api/webhook`.
 - `APP_URL`: Optional, inferred automatically from Vercel runtime. e.g. `https://readability-bot.vercel.app`
 - `READABILITY_API_URL`: Optional, inferred automatically from Vercel runtime. e.g. `https://readability-bot.vercel.app/api/readability`
-- `IV_RHASH`: Optional, [71b64d09b0a20d](rules.iv) is used by default.
+- `IV_RHASH`: Required for Instant View to render. Create an custom IV template by tracking an article link of the deployed instance in [instantview.telegram.org](https://instantview.telegram.org/my/), apply [rules.iv](rules.iv) as the template rules, and pick the rhash value at the end of the preview link.
 
 ### Run locally
 `npx vercel dev`
