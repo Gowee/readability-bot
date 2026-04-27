@@ -1,31 +1,27 @@
 {
-  "name": "svelte-app",
-  "version": "1.0.0",
+  "name": "readability-bot",
+  "version": "2.0.0",
   "private": true,
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
-    "start": "sirv public --no-clear"
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "engines": {
+    "node": "22.x"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^17.0.0",
-    "@rollup/plugin-node-resolve": "^11.0.0",
-    "rollup": "^2.3.4",
-    "rollup-plugin-css-only": "^3.1.0",
-    "rollup-plugin-livereload": "^2.0.0",
-    "rollup-plugin-svelte": "^7.0.0",
-    "rollup-plugin-terser": "^7.0.0",
-    "svelte": "^3.0.0"
+    "@sveltejs/vite-plugin-svelte": "latest",
+    "svelte": "latest",
+    "vite": "latest"
   },
   "dependencies": {
-    "@mozilla/readability": "^0.5",
-    "dompurify": "^3.1.6",
-    "encoding": "^0.1.13",
-    "html-entities": "^2.3.2",
-    "jsdom": "^24.1.1",
-    "node-fetch": "^2.6.1",
-    "node-telegram-bot-api": "^0.54.0",
-    "normalize-url": "^6.1.0",
-    "sirv-cli": "^1.0.0"
+    "@mozilla/readability": "latest",
+    "dompurify": "latest",
+    "html-encoding-sniffer": "latest",
+    "html-entities": "latest",
+    "iconv-lite": "latest",
+    "jsdom": "latest"
   }
 }

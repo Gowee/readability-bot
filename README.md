@@ -1,16 +1,30 @@
 # Readability Bot
 
-A wrapper around [Readability.js](https://github.com/mozilla/readability).
+A Vercel app that combines:
+- a simple web entrance
+- a readable article extraction API
+- a Telegram webhook for bot updates
 
 _Telegram bot: [@Readabbot](https://t.me/readabbot)_
 
 _Web app: https://readability-bot.vercel.app_
 
+## Project structure
+
+```text
+api/           Vercel serverless functions
+lib/server/    shared backend logic used by the API handlers
+public/        static assets copied as-is by Vite
+src/           Svelte frontend
+```
+
 ## API
 
 **Endpoint**: `/api/readability?url={URL}&format=json` ([e.g.](https://readability-bot.vercel.app/api/readability?url=https%3A%2F%2Fwww.zaobao.com%2Fnews%2Fchina%2Fstory20211002-1199284&format=json))
 
-Returns a self-explanatory JSON inherited from Readability.js.
+Returns either:
+- HTML: a cleaned article page
+- JSON: the extracted Readability payload when `format=json`
 
 ## Instant View for any\* website
 
@@ -55,11 +69,21 @@ bot.sendMessage(CHANNEL, message, (parseMode = "html"));
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/gowee/readability-bot&template=svelte)
 
-And, some [environment variables](https://vercel.com/docs/concepts/projects/environment-variables) are expected:
+Set these [environment variables](https://vercel.com/docs/concepts/projects/environment-variables):
 - [`BOT_TOKEN`](https://core.telegram.org/bots/features#botfather): REQUIRED for the bot service. Do not forget to [set the webhook address](https://core.telegram.org/bots/webhooks#how-do-i-set-a-webhook-for-either-type) to `{APP_URL}/api/webhook`.
-- `APP_URL`: Optional, inferred automatically from Vercel runtime. e.g. `https://readability-bot.vercel.app`
-- `READABILITY_API_URL`: Optional, inferred automatically from Vercel runtime. e.g. `https://readability-bot.vercel.app/api/readability`
+- `APP_URL`: Optional, inferred automatically from request headers on Vercel.
+- `READABILITY_API_URL`: Optional, inferred automatically as `{APP_URL}/api/readability`.
 - `IV_RHASH`: Required for Instant View to render. Create an custom IV template by tracking an article link of the deployed instance in [instantview.telegram.org](https://instantview.telegram.org/my/), apply [rules.iv](rules.iv) as the template rules, and pick the rhash value at the end of the preview link.
 
 ### Run locally
-`npx vercel dev`
+
+```bash
+npm install
+npm run dev
+```
+
+### Deploy
+
+```bash
+npx vercel deploy --prod
+```

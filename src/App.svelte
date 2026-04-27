@@ -1,92 +1,75 @@
 <script>
-	import { onMount } from "svelte";
-	// export let name;
-	let inputRef = null;
-	onMount(() => {
-		inputRef.focus();
-	});
+  const apiExample =
+    "/api/readability?url=https%3A%2F%2Fexample.org%2Farticle&format=json";
 </script>
 
-<main class="section is-medium columns is-flex is-vcentered">
-	<div class="container is-max-desktop has-text-centered">
-		<h1 class="title">Readability Bot</h1>
-		<form action="/api/readability" method="get" class="search-form">
-			<div class="field has-addons">
-				<p class="control is-expanded">
-					<input
-						name="url"
-						type="url"
-						required
-						placeholder='Link to an "unreadable" article'
-						bind:this={inputRef}
-						class="input is-rounded has-text-centered search-box"
-					/>
-				</p>
-				<p class="control">
-					<input
-						type="submit"
-						value="Read"
-						class="button is-link is-outlined is-rounded search-button"
-					/>
-				</p>
-			</div>
-		</form>
-		<p>
-			Telegram:
-			<a href="https://t.me/ReadabBot" target="_blank"> @ReadabBot </a>
-			<span class="seperator">|</span>
-			<a href="https://github.com/gowee/readability-bot" target="_blank">
-				Source
-			</a>
-		</p>
-		<p>
-			<small>
-				The 
-				<a
-					href="https://github.com/gowee/readability-bot"
-					target="_blank"
-				>
-				service
-				</a>
-				is powered by
-				<a
-					href="https://github.com/mozilla/readability"
-					target="_blank"
-				>
-				Readability.js
-				</a>
-				and hosted on
-				<a href="https://vercel.com/" target="_blank">Vercel</a>.
-			</small>
-		</p>
-	</div>
+<svelte:head>
+  <title>Readability Bot</title>
+</svelte:head>
+
+<main class="page-shell">
+  <section class="hero">
+    <p class="eyebrow">Telegram bot + article extraction API</p>
+    <h1>Readability Bot</h1>
+    <p class="lede">
+      Submit any article URL to get a cleaned reading view, a JSON payload from
+      Mozilla Readability, or a Telegram-ready Instant View link.
+    </p>
+
+    <form class="lookup" action="/api/readability" method="get">
+      <label class="sr-only" for="url">Article URL</label>
+      <input
+        id="url"
+        name="url"
+        type="url"
+        required
+        placeholder="https://example.org/article"
+        autocomplete="url"
+      />
+      <button type="submit">Open article</button>
+    </form>
+
+    <div class="actions">
+      <a href="https://t.me/ReadabBot" target="_blank" rel="noreferrer">
+        Open Telegram bot
+      </a>
+      <a
+        href="https://github.com/gowee/readability-bot"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Source repository
+      </a>
+    </div>
+  </section>
+
+  <section class="grid">
+    <article class="card">
+      <p class="card-label">API</p>
+      <h2>Readable output</h2>
+      <p>
+        `GET /api/readability?url=...` returns an extracted article page. Add
+        `format=json` for the structured Readability payload.
+      </p>
+      <code>{apiExample}</code>
+    </article>
+
+    <article class="card">
+      <p class="card-label">Webhook</p>
+      <h2>Telegram integration</h2>
+      <p>
+        Configure Telegram to POST updates to `/api/webhook` and the function
+        will respond with extracted article links and Instant View markup.
+      </p>
+    </article>
+
+    <article class="card">
+      <p class="card-label">Deploy</p>
+      <h2>Vercel-first layout</h2>
+      <p>
+        The frontend is built with Vite, while serverless functions stay under
+        `api/` and shared backend logic lives in `lib/server/`.
+      </p>
+    </article>
+  </section>
 </main>
-
-<style>
-	main {
-		min-width: 100vw;
-		min-height: 100vh;
-		margin-top: -54px;
-	}
-
-	h1 {
-		color: #ff3e00;
-		text-transform: uppercase;
-		font-size: 3.6em;
-		font-weight: 100;
-	}
-
-	.seperator {
-		padding: 0 3px;
-	}
-
-	.search-form .field {
-		margin: 2rem 4rem;
-	}
-
-	@media (max-width: 768px) {
-		.search-form .field {
-			margin: 2rem 0rem;
-		}
-	}
-</style>

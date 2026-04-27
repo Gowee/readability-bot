@@ -1,28 +1,25 @@
 const crypto = require("crypto");
-const fetch = require("node-fetch");
-const TelegramBot = require("node-telegram-bot-api");
-
-const { READABILITY_API_URL, BOT_TOKEN, constructIvUrl, constructReadableUrl } = require("./_common.js");
-
-// process.env.NTBA_FIX_319 = "test"; // https://github.com/yagop/node-telegram-bot-api/issues/540
+const { buildReadableMeta } = require("../lib/server/readability");
+const { createTelegramClient } = require("../lib/server/telegram");
+const { constructIvUrl, constructReadableUrl } = require("../lib/server/config");
 
 const START_MESSAGE = `Just send an article link here.
 It will be converted to a readable webpage with Instant View.`;
 
-const bot = new TelegramBot(BOT_TOKEN);
-console.log(BOT_TOKEN);
-
 module.exports = async (request, response) => {
   try {
-    const inlineQuery = request.body.inline_query;
-    const message = request.body.message;
-    if (inlineQuery && inlineQuery.query.trim()) {
+    const bot = createTelegramClient(process.env.BOT_TOKEN);
+    const inlineQuery = request.body?.inline_query;
+    const message = request.body?.message;
+
+    if (inlineQuery?.query?.trim()) {
       const url = tryFixUrl(inlineQuery.query);
       if (!url) {
+        response.status(200).send("");
         return;
       }
-      const meta = await fetchMeta(url);
-      const message = renderMessage(url, meta);
+      const { meta } = await buildReadableMeta(url, request.headers);
+      const renderedMessage = renderMessage(url, meta, request);
       try {
         await bot.answerInlineQuery(
           inlineQuery.id,
@@ -33,7 +30,7 @@ module.exports = async (request, response) => {
               title: meta.title ?? "<UNTITLED>",
               description: meta.excerpt,
               input_message_content: {
-                message_text: message,
+                message_text: renderedMessage,
                 disable_web_page_preview: false,
                 parse_mode: "HTML",
               },
@@ -41,11 +38,10 @@ module.exports = async (request, response) => {
           ],
           { is_personal: false, cache_time: 900 }
         );
-      } catch (_e) {
-        // a possible case is expired query
-        console.error(_e);
+      } catch (error) {
+        console.error(error);
       }
-    } else if (message && message.text.trim()) {
+    } else if (message?.text?.trim()) {
       if (message.text.trim() === "/start") {
         await bot.sendMessage(message.chat.id, START_MESSAGE, {
           reply_markup: {
@@ -59,18 +55,18 @@ module.exports = async (request, response) => {
         if (url) {
           let rendered;
           try {
-            const meta = await fetchMeta(url);
-            rendered = renderMessage(url, meta);
-          } catch (e) {
+            const { meta } = await buildReadableMeta(url, request.headers);
+            rendered = renderMessage(url, meta, request);
+          } catch (error) {
             if (message.chat.type === "private") {
               await bot.sendMessage(
                 message.chat.id,
-                `Failed to fetch the URL with error:\n <pre>${e
+                `Failed to fetch the URL with error:\n<pre>${error
                   .toString()
-                  .replace("<", "&lt;")
-                  .replace(">", "&gt;")
-                  .replace("&", "&amp;")
-                  .replace('"', "&quot;")}</pre>`,
+                  .replaceAll("&", "&amp;")
+                  .replaceAll("<", "&lt;")
+                  .replaceAll(">", "&gt;")
+                  .replaceAll('"', "&quot;")}</pre>`,
                 { parse_mode: "HTML" }
               );
             }
@@ -88,23 +84,19 @@ module.exports = async (request, response) => {
       }
     }
     response.status(204).send("");
-    response = null;
-  } catch (e) {
-    // mark as success to avoid TG retrying
-    response.status(200).send(e.toString());
-    console.error(e);
-    response = null;
-  } finally {
-    response && response.status(200).send("early return");
+  } catch (error) {
+    console.error(error);
+    response.status(200).send(error.message ?? String(error));
   }
 };
 
-function renderMessage(url, meta) {
-  const readableUrl = constructReadableUrl(url);
-  const ivUrl = constructIvUrl(url);
-  return `<a href="${ivUrl}"> </a><a href="${readableUrl}">${meta.title ?? "Untitlted Article"
-    }</a>\n ${meta.byline ?? meta.siteName ?? new URL(url).hostname
-    } (<a href="${url}">source</a>)`;
+function renderMessage(url, meta, request) {
+  const readableUrl = escapeHtml(constructReadableUrl(url, request));
+  const ivUrl = escapeHtml(constructIvUrl(url, request));
+  const sourceUrl = escapeHtml(url);
+  const label = escapeHtml(meta.title ?? "Untitled Article");
+  const source = escapeHtml(meta.byline ?? meta.siteName ?? new URL(url).hostname);
+  return `<a href="${ivUrl}"> </a><a href="${readableUrl}">${label}</a>\n${source} (<a href="${sourceUrl}">source</a>)`;
 }
 
 function tryFixUrl(url) {
@@ -127,19 +119,10 @@ function sha256(input) {
     .digest("hex");
 }
 
-async function fetchMeta(url) {
-  const metaUrl = `${READABILITY_API_URL}?url=${encodeURIComponent(
-    url
-  )}&format=json`;
-  const resp = await fetch(metaUrl);
-  if (!resp.ok) {
-    let body = "";
-    try {
-      body = await resp.text();
-    } catch (_e) { }
-    throw new Error(
-      `Upstream HTTP Error: ${resp.status} ${resp.statusText}\n${body}`
-    );
-  }
-  return await resp.json();
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }

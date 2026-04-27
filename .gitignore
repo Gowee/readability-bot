@@ -1,5 +1,8 @@
 /node_modules/
+/dist/
+.yarn/
 /public/build/
+/.codex
 .DS_Store
 .env
 .env.local
