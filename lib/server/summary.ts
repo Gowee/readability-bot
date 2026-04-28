@@ -85,6 +85,7 @@ function stripPreamble(text: string): string {
   const patterns = [
     /^Here is a (?:concise |\d[-, \d]*sentence )?summary (?:of the article|of the text)?:?\s*/i,
     /^Summary:?\s*/i,
+    /^in the original language:?\s*/i,
     /^The article (?:is about|discusses|describes):?\s*/i,
   ];
   for (const pat of patterns) {
