@@ -4,7 +4,7 @@ const FALLBACK_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Safari/605.1.15 " +
   DEFAULT_USER_AGENT_SUFFIX;
 
-function inferAppUrl(request) {
+export function inferAppUrl(request?: { headers?: Record<string, string | undefined> }): string {
   if (process.env.APP_URL) {
     return process.env.APP_URL;
   }
@@ -22,25 +22,18 @@ function inferAppUrl(request) {
   return `${protocol}://${host}`;
 }
 
-function getReadabilityApiUrl(request) {
+export function getReadabilityApiUrl(request?: { headers?: Record<string, string | undefined> }): string {
   return process.env.READABILITY_API_URL ?? `${inferAppUrl(request)}/api/readability`;
 }
 
-function constructReadableUrl(url, request) {
+export function constructReadableUrl(url: string, request?: { headers?: Record<string, string | undefined> }): string {
   return `${getReadabilityApiUrl(request)}?url=${encodeURIComponent(url)}`;
 }
 
-function constructIvUrl(url, request) {
+export function constructIvUrl(url: string, request?: { headers?: Record<string, string | undefined> }): string {
   return `https://t.me/iv?url=${encodeURIComponent(
     constructReadableUrl(url, request)
   )}&rhash=${process.env.IV_RHASH ?? ""}`;
 }
 
-module.exports = {
-  DEFAULT_USER_AGENT_SUFFIX,
-  FALLBACK_USER_AGENT,
-  constructIvUrl,
-  constructReadableUrl,
-  getReadabilityApiUrl,
-  inferAppUrl,
-};
+export { DEFAULT_USER_AGENT_SUFFIX, FALLBACK_USER_AGENT };

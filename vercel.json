@@ -10,7 +10,7 @@
   "outputDirectory": "dist",
   "cleanUrls": true,
   "functions": {
-    "api/*.js": {
+    "api/*.ts": {
       "maxDuration": 30
     }
   }
