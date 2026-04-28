@@ -1,3 +1,5 @@
+import { DEFAULT_USER_AGENT_SUFFIX } from "./config.js";
+
 const CHATJIMMY_URL = "https://chatjimmy.ai/api/chat";
 const TIMEOUT_MS = 3_000;
 const MAX_INPUT_CHARS = 8_000;
@@ -15,7 +17,10 @@ export async function generateSummary(
 
     const response = await fetch(CHATJIMMY_URL, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "user-agent": DEFAULT_USER_AGENT_SUFFIX,
+      },
       body: JSON.stringify({
         messages: [
           {
