@@ -12,6 +12,8 @@ import {
   inferAppUrl,
 } from "./config.js";
 
+const MAX_UPSTREAM_BODY_SIZE = 2 * 1024 * 1024; // 2MB
+
 const EASTER_EGG_PAGE = `<!doctype html>
 <html lang="en">
   <head><title>Catastrophic Server Error</title></head>
@@ -48,70 +50,93 @@ export async function buildReadableMeta(
     throw error;
   }
 
+  const controller = new AbortController();
   const upstreamResponse = await fetch(url, {
     headers: constructUpstreamRequestHeaders(requestHeaders),
     redirect: "follow",
+    signal: controller.signal,
   });
 
-  if (!upstreamResponse.ok) {
-    const error = new Error(
-      `Upstream HTTP error: ${upstreamResponse.status} ${upstreamResponse.statusText}`
-    ) as Error & { statusCode: number };
-    error.statusCode = upstreamResponse.status;
-    throw error;
-  }
+  try {
+    const upstreamContentType = upstreamResponse.headers.get("content-type");
+    const upstreamContentLength = upstreamResponse.headers.get("content-length");
 
-  const dom = await createDomFromResponse(upstreamResponse, url);
-  const doc = dom.window.document;
-  const DOMPurify = createDOMPurify(dom.window);
+    validateContentType(upstreamContentType, url);
+    validateContentLength(upstreamContentLength, url);
 
-  fixImgLazyLoadFromDataSrc(doc);
-
-  const hostname = new URL(url).hostname;
-  if (hostname === "www.xiaohongshu.com") {
-    fixXiaohongshuImages(doc);
-  } else if (hostname === "mp.weixin.qq.com") {
-    fixWeixinArticle(doc);
-  }
-
-  let articleContent: string | null = null;
-  if (hostname === "telegra.ph") {
-    const telegraPhContent = doc.querySelector(".tl_article_content");
-    if (telegraPhContent) {
-      telegraPhContent.querySelector("h1")?.remove();
-      telegraPhContent.querySelector("address")?.remove();
-      articleContent = telegraPhContent.innerHTML;
+    if (!upstreamResponse.ok) {
+      console.log(
+        JSON.stringify({
+          event: "upstream_http_error",
+          url,
+          status: upstreamResponse.status,
+          statusText: upstreamResponse.statusText,
+          content_type: upstreamContentType,
+          content_length: upstreamContentLength,
+        })
+      );
+      const error = new Error(
+        `Upstream HTTP error: ${upstreamResponse.status} ${upstreamResponse.statusText}`
+      ) as Error & { statusCode: number };
+      error.statusCode = upstreamResponse.status;
+      throw error;
     }
-  }
 
-  const article = new Readability(doc).parse();
-  if (!article) {
-    const error = new Error("Unable to extract a readable article from the page") as Error & { statusCode: number };
-    error.statusCode = 422;
+    const dom = await createDomFromResponse(upstreamResponse, url);
+    const doc = dom.window.document;
+    const DOMPurify = createDOMPurify(dom.window);
+
+    fixImgLazyLoadFromDataSrc(doc);
+
+    const hostname = new URL(url).hostname;
+    if (hostname === "www.xiaohongshu.com") {
+      fixXiaohongshuImages(doc);
+    } else if (hostname === "mp.weixin.qq.com") {
+      fixWeixinArticle(doc);
+    }
+
+    let articleContent: string | null = null;
+    if (hostname === "telegra.ph") {
+      const telegraPhContent = doc.querySelector(".tl_article_content");
+      if (telegraPhContent) {
+        telegraPhContent.querySelector("h1")?.remove();
+        telegraPhContent.querySelector("address")?.remove();
+        articleContent = telegraPhContent.innerHTML;
+      }
+    }
+
+    const article = new Readability(doc).parse();
+    if (!article) {
+      const error = new Error("Unable to extract a readable article from the page") as Error & { statusCode: number };
+      error.statusCode = 422;
+      throw error;
+    }
+
+    const ogImage = doc.querySelector(
+      'meta[property="og:image"], meta[name="og:image"]'
+    ) as HTMLMetaElement | null;
+
+    const meta: ReadableMeta = {
+      ...article,
+      url,
+      lang: extractLang(doc),
+      byline: stripRepeatedWhitespace(article.byline),
+      siteName: stripRepeatedWhitespace(article.siteName),
+      excerpt: stripRepeatedWhitespace(article.excerpt),
+      content: DOMPurify.sanitize(articleContent ?? article.content ?? ""),
+      imageUrl: ogImage?.content ?? null,
+    };
+
+    return {
+      meta,
+      cacheControl:
+        upstreamResponse.headers.get("cache-control") ??
+        "public, max-age=0, s-maxage=900, stale-while-revalidate=900",
+    };
+  } catch (error) {
+    controller.abort();
     throw error;
   }
-
-  const ogImage = doc.querySelector(
-    'meta[property="og:image"], meta[name="og:image"]'
-  ) as HTMLMetaElement | null;
-
-  const meta: ReadableMeta = {
-    ...article,
-    url,
-    lang: extractLang(doc),
-    byline: stripRepeatedWhitespace(article.byline),
-    siteName: stripRepeatedWhitespace(article.siteName),
-    excerpt: stripRepeatedWhitespace(article.excerpt),
-    content: DOMPurify.sanitize(articleContent ?? article.content ?? ""),
-    imageUrl: ogImage?.content ?? null,
-  };
-
-  return {
-    meta,
-    cacheControl:
-      upstreamResponse.headers.get("cache-control") ??
-      "public, max-age=0, s-maxage=900, stale-while-revalidate=900",
-  };
 }
 
 export function renderReadablePage(meta: ReadableMeta, request?: VercelRequest): string {
@@ -330,6 +355,21 @@ export function renderReadablePage(meta: ReadableMeta, request?: VercelRequest):
 
 async function createDomFromResponse(response: Response, url: string): Promise<JSDOM> {
   const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length > MAX_UPSTREAM_BODY_SIZE) {
+    console.log(
+      JSON.stringify({
+        event: "content_length_exceeded_post_read",
+        url,
+        actual_size: buffer.length,
+        limit: MAX_UPSTREAM_BODY_SIZE,
+      })
+    );
+    const error = new Error(
+      `Content too large: ${(buffer.length / 1024 / 1024).toFixed(1)}MB. Maximum size is 2MB.`
+    ) as Error & { statusCode: number };
+    error.statusCode = 413;
+    throw error;
+  }
   const encoding = sniffHTMLEncoding(buffer, {
     transportLayerEncodingLabel: getCharset(response.headers.get("content-type")),
     defaultEncoding: "UTF-8",
@@ -413,6 +453,44 @@ function fixWeixinArticle(doc: Document): void {
   if (content) {
     content.removeAttribute("style");
   }
+}
+
+function validateContentType(contentType: string | null, url: string): void {
+  if (!contentType) return;
+  const mimeType = contentType.split(";")[0]!.trim().toLowerCase();
+  if (mimeType.startsWith("text/")) return;
+  if (mimeType === "application/xhtml+xml") return;
+  console.log(
+    JSON.stringify({
+      event: "content_type_rejected",
+      url,
+      content_type: contentType,
+    })
+  );
+  const error = new Error(
+    `Unsupported content type: ${contentType}. Only text and HTML content types are supported.`
+  ) as Error & { statusCode: number };
+  error.statusCode = 415;
+  throw error;
+}
+
+function validateContentLength(contentLength: string | null, url: string): void {
+  if (!contentLength) return;
+  const length = parseInt(contentLength, 10);
+  if (isNaN(length) || length <= MAX_UPSTREAM_BODY_SIZE) return;
+  console.log(
+    JSON.stringify({
+      event: "content_length_exceeded",
+      url,
+      content_length: length,
+      limit: MAX_UPSTREAM_BODY_SIZE,
+    })
+  );
+  const error = new Error(
+    `Content too large: ${(length / 1024 / 1024).toFixed(1)}MB. Maximum size is 2MB.`
+  ) as Error & { statusCode: number };
+  error.statusCode = 413;
+  throw error;
 }
 
 export { EASTER_EGG_PAGE };

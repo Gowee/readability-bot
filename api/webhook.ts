@@ -83,9 +83,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
         return;
       }
       logRequest({ url });
-      const { meta } = await buildReadableMeta(url, request.headers);
-      const renderedMessage = renderMessage(url, meta, request);
       try {
+        const { meta } = await buildReadableMeta(url, request.headers);
+        const renderedMessage = renderMessage(url, meta, request);
         await bot.answerInlineQuery(
           inlineQuery.id,
           [
@@ -105,6 +105,26 @@ export default async function handler(request: VercelRequest, response: VercelRe
         );
       } catch (error) {
         console.error(error);
+        const errorText = String(error instanceof Error ? error.message : error);
+        try {
+          await bot.answerInlineQuery(
+            inlineQuery.id,
+            [
+              {
+                type: "article",
+                id: sha256(url),
+                title: "Error fetching article",
+                description: errorText.slice(0, 256),
+                input_message_content: {
+                  message_text: `Failed to fetch the URL:\n${escapeHtml(errorText)}`,
+                },
+              },
+            ],
+            { is_personal: true, cache_time: 0 }
+          );
+        } catch (answerError) {
+          console.error(answerError);
+        }
       }
     } else if (message?.text?.trim()) {
       if (message.text.trim() === "/start") {
@@ -120,7 +140,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
         const url = tryFixUrl(message.text);
         if (url) {
           logRequest({ url });
-          let rendered: string;
+          let rendered: string | undefined;
           try {
             const { meta } = await buildReadableMeta(url, request.headers);
             rendered = renderMessage(url, meta, request);
@@ -136,12 +156,14 @@ export default async function handler(request: VercelRequest, response: VercelRe
                 { parse_mode: "HTML" }
               );
             }
-            return;
+            // Fall through — always respond 20x to the webhook
           }
-          await bot.sendMessage(message.chat.id, rendered, {
-            disable_web_page_preview: false,
-            parse_mode: "HTML",
-          });
+          if (rendered) {
+            await bot.sendMessage(message.chat.id, rendered, {
+              disable_web_page_preview: false,
+              parse_mode: "HTML",
+            });
+          }
         } else {
           logRequest({ url: message.text, valid_url: false });
           if (message.chat.type === "private") {
