@@ -48,9 +48,7 @@ export async function buildReadableMeta(
   requestHeaders: Record<string, string | undefined> = {}
 ): Promise<{ meta: ReadableMeta; upstreamCacheControl: string | null }> {
   if (!isValidUrl(url)) {
-    const error = new Error("Invalid URL") as Error & { statusCode: number };
-    error.statusCode = 400;
-    throw error;
+    throwHttpError(400, "Invalid URL");
   }
 
   const controller = new AbortController();
@@ -78,11 +76,10 @@ export async function buildReadableMeta(
           content_length: upstreamContentLength,
         })
       );
-      const error = new Error(
+      throwHttpError(
+        upstreamResponse.status,
         `Upstream HTTP error: ${upstreamResponse.status} ${upstreamResponse.statusText}`
-      ) as Error & { statusCode: number };
-      error.statusCode = upstreamResponse.status;
-      throw error;
+      );
     }
 
     const dom = await createDomFromResponse(upstreamResponse, url);
@@ -110,9 +107,7 @@ export async function buildReadableMeta(
 
     const article = new Readability(doc).parse();
     if (!article) {
-      const error = new Error("Unable to extract a readable article from the page") as Error & { statusCode: number };
-      error.statusCode = 422;
-      throw error;
+      throwHttpError(422, "Unable to extract a readable article from the page");
     }
 
     const ogImage = doc.querySelector(
@@ -135,6 +130,10 @@ export async function buildReadableMeta(
       upstreamCacheControl: upstreamResponse.headers.get("cache-control") ?? null,
     };
   } catch (error) {
+    // Abort in-flight body download when a header-level check fails
+    // (content-type, content-length, HTTP status) — the response body is
+    // still streaming at that point and would otherwise keep downloading.
+    // It is a harmless no-op when the error comes from after arrayBuffer().
     controller.abort();
     throw error;
   }
@@ -397,11 +396,10 @@ async function createDomFromResponse(response: Response, url: string): Promise<J
         limit: MAX_UPSTREAM_BODY_SIZE,
       })
     );
-    const error = new Error(
+    throwHttpError(
+      413,
       `Content too large: ${(buffer.length / 1024 / 1024).toFixed(1)}MB. Maximum size is 2MB.`
-    ) as Error & { statusCode: number };
-    error.statusCode = 413;
-    throw error;
+    );
   }
   const encoding = sniffHTMLEncoding(buffer, {
     transportLayerEncodingLabel: getCharset(response.headers.get("content-type")),
@@ -433,6 +431,12 @@ function getCharset(contentType: string | null): string | undefined {
 
 function stripRepeatedWhitespace(value: string | null | undefined): string | null {
   return value ? value.replace(/\s+/g, " ").trim() : (value ?? null);
+}
+
+function throwHttpError(status: number, message: string): never {
+  const error = new Error(message) as Error & { statusCode: number };
+  error.statusCode = status;
+  throw error;
 }
 
 function isValidUrl(url: string): boolean {
@@ -502,11 +506,10 @@ function validateContentType(contentType: string | null, url: string): void {
       content_type: contentType,
     })
   );
-  const error = new Error(
+  throwHttpError(
+    415,
     `Unsupported content type: ${contentType}. Only text and HTML content types are supported.`
-  ) as Error & { statusCode: number };
-  error.statusCode = 415;
-  throw error;
+  );
 }
 
 function validateContentLength(contentLength: string | null, url: string): void {
@@ -521,11 +524,10 @@ function validateContentLength(contentLength: string | null, url: string): void 
       limit: MAX_UPSTREAM_BODY_SIZE,
     })
   );
-  const error = new Error(
+  throwHttpError(
+    413,
     `Content too large: ${(length / 1024 / 1024).toFixed(1)}MB. Maximum size is 2MB.`
-  ) as Error & { statusCode: number };
-  error.statusCode = 413;
-  throw error;
+  );
 }
 
 export { EASTER_EGG_PAGE };

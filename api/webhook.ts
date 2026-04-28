@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { encode as escapeHtml } from "html-entities";
 import { checkRateLimit } from "@vercel/firewall";
 import { buildReadableMeta } from "../lib/server/readability.js";
 import { createTelegramClient } from "../lib/server/telegram.js";
@@ -113,10 +114,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
               {
                 type: "article",
                 id: sha256(url),
-                title: "Error fetching article",
+                title: "⚠️ Error fetching article",
                 description: errorText.slice(0, 256),
                 input_message_content: {
-                  message_text: `Failed to fetch the URL:\n${escapeHtml(errorText)}`,
+                  message_text: `⚠️ Failed to fetch the URL:\n${escapeHtml(errorText)}`,
                 },
               },
             ],
@@ -148,11 +149,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
             if (message.chat.type === "private") {
               await bot.sendMessage(
                 message.chat.id,
-                `Failed to fetch the URL with error:\n<pre>${String(error)
-                  .replaceAll("&", "&amp;")
-                  .replaceAll("<", "&lt;")
-                  .replaceAll(">", "&gt;")
-                  .replaceAll('"', "&quot;")}</pre>`,
+                `⚠️ Failed to fetch the URL with error:\n<pre>${escapeHtml(String(error))}</pre>`,
                 { parse_mode: "HTML" }
               );
             }
@@ -167,7 +164,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
         } else {
           logRequest({ url: message.text, valid_url: false });
           if (message.chat.type === "private") {
-            await bot.sendMessage(message.chat.id, "It is not a valid URL.");
+            await bot.sendMessage(message.chat.id, "⚠️ It is not a valid URL.");
           }
         }
       }
@@ -202,16 +199,5 @@ function tryFixUrl(url: string): string | null {
 }
 
 function sha256(input: string): string {
-  return crypto
-    .createHash("sha256")
-    .update(JSON.stringify(input))
-    .digest("hex");
-}
-
-function escapeHtml(value: string): string {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+  return crypto.createHash("sha256").update(input).digest("hex");
 }
