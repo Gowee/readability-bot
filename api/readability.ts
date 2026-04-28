@@ -3,6 +3,8 @@ import {
   buildReadableMeta,
   renderReadablePage,
 } from "../lib/server/readability.js";
+import { generateSummary } from "../lib/server/summary.js";
+import { getVersionInfo } from "../lib/server/meta.js";
 
 interface VercelRequest {
   headers: Record<string, string | undefined>;
@@ -31,8 +33,20 @@ export default async function handler(request: VercelRequest, response: VercelRe
   }
 
   try {
-    const { meta, cacheControl } = await buildReadableMeta(url!, request.headers);
-    response.setHeader("cache-control", cacheControl);
+    const { meta, upstreamCacheControl } = await buildReadableMeta(url!, request.headers);
+    response.setHeader(
+      "cache-control",
+      upstreamCacheControl ?? "public, max-age=0, s-maxage=900, stale-while-revalidate=900"
+    );
+
+    if (request.query.summary !== "0") {
+      meta.summary = await generateSummary(meta.textContent);
+      if (meta.summary) {
+        meta.summaryAttribution = { name: "Chat Jimmy", url: "https://chatjimmy.ai" };
+      }
+    }
+
+    meta.version = getVersionInfo();
 
     if (format === "json") {
       response.status(200).json(meta);

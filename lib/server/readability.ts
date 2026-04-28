@@ -38,12 +38,15 @@ export interface ReadableMeta {
   length?: number | null;
   dir?: string | null;
   publishedTime?: string | null;
+  summary?: string | null;
+  summaryAttribution?: { name: string; url: string } | null;
+  version?: { commit: string | null; buildTime: string } | null;
 }
 
 export async function buildReadableMeta(
   url: string,
   requestHeaders: Record<string, string | undefined> = {}
-): Promise<{ meta: ReadableMeta; cacheControl: string }> {
+): Promise<{ meta: ReadableMeta; upstreamCacheControl: string | null }> {
   if (!isValidUrl(url)) {
     const error = new Error("Invalid URL") as Error & { statusCode: number };
     error.statusCode = 400;
@@ -129,9 +132,7 @@ export async function buildReadableMeta(
 
     return {
       meta,
-      cacheControl:
-        upstreamResponse.headers.get("cache-control") ??
-        "public, max-age=0, s-maxage=900, stale-while-revalidate=900",
+      upstreamCacheControl: upstreamResponse.headers.get("cache-control") ?? null,
     };
   } catch (error) {
     controller.abort();
@@ -201,7 +202,7 @@ export function renderReadablePage(meta: ReadableMeta, request?: VercelRequest):
 
       /* ── Header ── */
       header {
-        margin-bottom: 2.5rem;
+        margin-bottom: 1.2rem;
         padding-bottom: 1.5rem;
       }
 
@@ -315,6 +316,29 @@ export function renderReadablePage(meta: ReadableMeta, request?: VercelRequest):
         font-weight: 600;
       }
 
+      /* ── Summary ── */
+      .summary {
+        font-family: var(--font-sans);
+        font-size: 0.95rem;
+        color: var(--muted);
+        padding: 1rem;
+        background: #f9f9f9;
+        border-left: 3px solid var(--line);
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+      }
+      .summary p { margin: 0; }
+      .summary .summary-attribution {
+        margin-bottom: 0.5rem;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #999;
+      }
+      .summary .summary-attribution a {
+        color: inherit;
+      }
+
       /* ── Footer ── */
       hr {
         margin: 2.5rem 0 1.25rem;
@@ -328,8 +352,12 @@ export function renderReadablePage(meta: ReadableMeta, request?: VercelRequest):
         color: var(--muted);
       }
 
-      footer a {
-        color: inherit;
+      footer a { color: inherit; }
+      footer code {
+        font-size: 0.85em;
+        background: #f0f0f0;
+        padding: 0.1em 0.3em;
+        border-radius: 3px;
       }
     </style>
   </head>
@@ -341,12 +369,17 @@ export function renderReadablePage(meta: ReadableMeta, request?: VercelRequest):
           <a rel="author" href="${sourceUrl}" target="_blank">${htmlEntitiesEscape(byline)}</a>
         </address>
       </header>
+      ${meta.summary ? `
+      <aside class="summary">
+        <p class="summary-attribution">Summary by <a href="https://chatjimmy.ai">Chat Jimmy</a></p>
+        <p>${htmlEntitiesEscape(meta.summary)}</p>
+      </aside>` : ""}
       <article>${meta.content}</article>
       <hr />
       <footer>
         The article (<a title="Telegram Instant View link" href="${instantViewUrl}">IV</a>) is extracted from
         <a title="Source link" href="${sourceUrl}" target="_blank">${htmlEntitiesEscape(siteName)}</a> by
-        <a href="${homeUrl}">readability-bot</a> at <time datetime="${generatedAt}">${generatedAt}</time>.
+        <a href="${homeUrl}">readability-bot</a>${meta.version?.commit ? ` (<code title="build at ${htmlEntitiesEscape(meta.version.buildTime)}">${htmlEntitiesEscape(meta.version.commit)}</code>)` : ""} at <time datetime="${generatedAt}">${generatedAt}</time>.
       </footer>
     </main>
   </body>
@@ -378,6 +411,8 @@ async function createDomFromResponse(response: Response, url: string): Promise<J
   return new JSDOM(html, { url });
 }
 
+// Carry through the original request's User-Agent so upstream sites see a
+// realistic browser UA instead of a Node.js fetch UA, reducing blocks/bans.
 function constructUpstreamRequestHeaders(headers: Record<string, string | undefined>): Record<string, string> {
   const currentUserAgent = headers["user-agent"];
   const userAgent =

@@ -68,6 +68,16 @@
 		max-width: 40rem;
 	}
 
+	@media (max-width: 480px) {
+		.form-row {
+			flex-direction: column;
+			align-items: stretch;
+		}
+		button {
+			width: 100%;
+		}
+	}
+
 	input {
 		flex: 1;
 		min-width: 0;

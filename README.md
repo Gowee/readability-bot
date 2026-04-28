@@ -26,6 +26,16 @@ Returns either:
 - HTML: a cleaned article page
 - JSON: the extracted Readability payload when `format=json`
 
+**Optional parameters:**
+
+- `?summary=0` — Disable AI-generated summary (enabled by default). Example:
+  `https://readability-bot.vercel.app/api/readability?url=...&summary=0`
+
+  When enabled, the API generates a 2-3 sentence summary of the article text
+  using an external LLM. The summary appears as a styled block in the HTML view
+  and as the `summary` field in the JSON response. If the LLM is unavailable,
+  the summary is silently omitted.
+
 ## Instant View for any\* website
 
 ### Bot
@@ -63,7 +73,12 @@ bot.sendMessage(CHANNEL, message, (parseMode = "html"));
   bot.send_message(CHANNEL, message, parse_mode="html") # await it?
 ```
 
-<sup><sub>\*: Almost, with no guarantee. Compatibility issues for specific websites are generally not accepted in this project. Please report those to [readability.js](https://github.com/mozilla/readability), **if applicable**.</sub></sup>
+<sup><sub>\*: Almost, with no guarantee. Instant View may fail to render when the source
+page has deeply nested HTML structures, or when Telegram is unable to fetch
+external media (e.g. hotlink-protected images). Compatibility issues about
+Instant View rendering are welcome in this project; issues about the article
+extraction itself should go to
+[readability.js](https://github.com/mozilla/readability).</sub></sup>
 
 ## Deploy Your Own
 
@@ -73,7 +88,7 @@ Set these [environment variables](https://vercel.com/docs/concepts/projects/envi
 - [`BOT_TOKEN`](https://core.telegram.org/bots/features#botfather): REQUIRED for the bot service. Do not forget to [set the webhook address](https://core.telegram.org/bots/webhooks#how-do-i-set-a-webhook-for-either-type) to `{APP_URL}/api/webhook`.
 - `APP_URL`: Optional, inferred automatically from request headers on Vercel.
 - `READABILITY_API_URL`: Optional, inferred automatically as `{APP_URL}/api/readability`.
-- `IV_RHASH`: Required for Instant View to render. Create an custom IV template by tracking an article link of the deployed instance in [instantview.telegram.org](https://instantview.telegram.org/my/), apply [rules.iv](rules.iv) as the template rules, and pick the rhash value at the end of the preview link.
+- `IV_RHASH`: Required for Instant View to render. Create a custom IV template by tracking an article link of the deployed instance in [instantview.telegram.org](https://instantview.telegram.org/my/), apply [rules.iv](rules.iv) as the template rules, and pick the rhash value at the end of the preview link. The template editor there also shows detailed IV rendering errors, which is useful for debugging failures.
 
 ### Run locally
 
