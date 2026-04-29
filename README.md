@@ -86,7 +86,7 @@ extraction itself should go to
 
 Set these [environment variables](https://vercel.com/docs/concepts/projects/environment-variables):
 - [`BOT_TOKEN`](https://core.telegram.org/bots/features#botfather): REQUIRED for the bot service. Do not forget to [set the webhook address](https://core.telegram.org/bots/webhooks#how-do-i-set-a-webhook-for-either-type) to `{APP_URL}/api/webhook`.
-- `APP_URL`: Optional, inferred automatically from request headers on Vercel.
+- `APP_URL`: Optional, defaults to the Vercel production URL from `VERCEL_PROJECT_PRODUCTION_URL`. Override only if you use a custom domain not configured in Vercel.
 - `READABILITY_API_URL`: Optional, inferred automatically as `{APP_URL}/api/readability`.
 - `IV_RHASH`: Required for Instant View to render. Create a custom IV template by tracking an article link of the deployed instance in [instantview.telegram.org](https://instantview.telegram.org/my/), apply [rules.iv](rules.iv) as the template rules, and pick the rhash value at the end of the preview link. The template editor there also shows detailed IV rendering errors, which is useful for debugging failures.
 

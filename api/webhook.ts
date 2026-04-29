@@ -86,7 +86,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
       logRequest({ url });
       try {
         const { meta } = await buildReadableMeta(url, request.headers);
-        const renderedMessage = renderMessage(url, meta, request);
+        const renderedMessage = renderMessage(url, meta);
         await bot.answerInlineQuery(
           inlineQuery.id,
           [
@@ -144,7 +144,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
           let rendered: string | undefined;
           try {
             const { meta } = await buildReadableMeta(url, request.headers);
-            rendered = renderMessage(url, meta, request);
+            rendered = renderMessage(url, meta);
           } catch (error) {
             if (message.chat.type === "private") {
               await bot.sendMessage(
@@ -176,9 +176,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
   }
 }
 
-function renderMessage(url: string, meta: { title?: string | null; excerpt?: string | null; byline?: string | null; siteName?: string | null }, request: { headers?: Record<string, string | undefined> }): string {
-  const readableUrl = escapeHtml(constructReadableUrl(url, request));
-  const ivUrl = escapeHtml(constructIvUrl(url, request));
+function renderMessage(url: string, meta: { title?: string | null; excerpt?: string | null; byline?: string | null; siteName?: string | null }): string {
+  const readableUrl = escapeHtml(constructReadableUrl(url));
+  const ivUrl = escapeHtml(constructIvUrl(url));
   const sourceUrl = escapeHtml(url);
   const label = escapeHtml(meta.title ?? "Untitled Article");
   const source = escapeHtml(meta.byline ?? meta.siteName ?? new URL(url).hostname);

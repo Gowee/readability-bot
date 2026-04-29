@@ -54,7 +54,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
     }
 
     response.setHeader("content-type", "text/html; charset=utf-8");
-    response.status(200).send(renderReadablePage(meta, request));
+    response.status(200).send(renderReadablePage(meta));
   } catch (error: unknown) {
     console.error(error);
     const err = error as Error & { statusCode?: number };

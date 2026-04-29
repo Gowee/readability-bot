@@ -23,8 +23,6 @@ const EASTER_EGG_PAGE = `<!doctype html>
 </html>
 `;
 
-type VercelRequest = { headers?: Record<string, string | undefined> };
-
 export interface ReadableMeta {
   url: string;
   lang: string | null;
@@ -40,7 +38,7 @@ export interface ReadableMeta {
   publishedTime?: string | null;
   summary?: string | null;
   summaryAttribution?: { name: string; url: string } | null;
-  version?: { commit: string | null; buildTime: string } | null;
+  version?: { commit: string | null; deploymentId: string | null } | null;
 }
 
 export async function buildReadableMeta(
@@ -139,8 +137,8 @@ export async function buildReadableMeta(
   }
 }
 
-export function renderReadablePage(meta: ReadableMeta, request?: VercelRequest): string {
-  const appUrl = inferAppUrl(request);
+export function renderReadablePage(meta: ReadableMeta): string {
+  const appUrl = inferAppUrl();
   const generatedAt = new Date().toISOString();
   const langAttr = meta.lang ? ` lang="${meta.lang}"` : "";
   const sourceHost = new URL(meta.url).hostname;
@@ -151,7 +149,7 @@ export function renderReadablePage(meta: ReadableMeta, request?: VercelRequest):
     : "";
   const sourceUrl = htmlEntitiesEscape(meta.url);
   const homeUrl = htmlEntitiesEscape(appUrl);
-  const instantViewUrl = htmlEntitiesEscape(constructIvUrl(meta.url, request));
+  const instantViewUrl = htmlEntitiesEscape(constructIvUrl(meta.url));
 
   return `<!doctype html>
 <html${langAttr}>
@@ -378,7 +376,7 @@ export function renderReadablePage(meta: ReadableMeta, request?: VercelRequest):
       <footer>
         The article (<a title="Telegram Instant View link" href="${instantViewUrl}">IV</a>) is extracted from
         <a title="Source link" href="${sourceUrl}" target="_blank">${htmlEntitiesEscape(siteName)}</a> by
-        <a href="${homeUrl}">readability-bot</a>${meta.version?.commit ? ` (<code title="build at ${htmlEntitiesEscape(meta.version.buildTime)}">${htmlEntitiesEscape(meta.version.commit)}</code>)` : ""} at <time datetime="${generatedAt}">${generatedAt}</time>.
+        <a href="${homeUrl}">readability-bot</a>${meta.version?.commit ? ` (<code title="deployment: ${htmlEntitiesEscape(meta.version.deploymentId ?? meta.version.commit)}">${htmlEntitiesEscape(meta.version.commit)}</code>)` : ""} at <time datetime="${generatedAt}">${generatedAt}</time>.
       </footer>
     </main>
   </body>
