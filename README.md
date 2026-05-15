@@ -42,6 +42,15 @@ Returns either:
 
 The Telegram bot returns "readable" articles with Instant View enabled automatically.
 
+It supports three Telegram entry points:
+- private chat: send a message that contains a URL anywhere in the text
+- inline mode: type `@Readabbot <url>` in any chat
+- guest mode: mention `@Readabbot` in a chat message to summon the bot; it first tries to extract the first available link from the message being replied to, and falls back to the summoning message if needed, then replies once through Telegram's guest interaction flow
+
+For guest mode, enable `Guest Mode` for your bot in BotFather's Mini App settings. Telegram documents guest interactions in the Bot Features guide: https://core.telegram.org/bots/features#guest-interactions
+
+If you want Telegram to treat `@Readabbot` as a regular mention instead of opening inline mode, place a space before the `@` and send it as part of a normal chat message.
+
 ### Web service
 
 It is also possbile to apply a quick Instant View to any\* website programmatically with the help of the web service.
@@ -93,8 +102,8 @@ Set these [environment variables](https://vercel.com/docs/concepts/projects/envi
 ### Run locally
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 ### Deploy

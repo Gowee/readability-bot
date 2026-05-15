@@ -4,6 +4,7 @@ import sniffHTMLEncoding from "html-encoding-sniffer";
 import { encode as htmlEntitiesEscape } from "html-entities";
 import iconv from "iconv-lite";
 import { JSDOM } from "jsdom";
+import jsdom from "jsdom";
 
 import {
   DEFAULT_USER_AGENT_SUFFIX,
@@ -13,6 +14,11 @@ import {
 } from "./config.js";
 
 const MAX_UPSTREAM_BODY_SIZE = 2 * 1024 * 1024; // 2MB
+const VirtualConsole = (jsdom as typeof jsdom & {
+  VirtualConsole: new () => {
+    on(event: "jsdomError", listener: (error: unknown) => void): void;
+  };
+}).VirtualConsole;
 
 const EASTER_EGG_PAGE = `<!doctype html>
 <html lang="en">
@@ -404,7 +410,14 @@ async function createDomFromResponse(response: Response, url: string): Promise<J
     defaultEncoding: "UTF-8",
   });
   const html = iconv.decode(buffer, encoding || "utf-8");
-  return new JSDOM(html, { url });
+  const virtualConsole = new VirtualConsole();
+  virtualConsole.on("jsdomError", (error: unknown) => {
+    if (String(error).includes("Could not parse CSS stylesheet")) {
+      return;
+    }
+    console.error(error);
+  });
+  return new JSDOM(html, { url, virtualConsole });
 }
 
 // Carry through the original request's User-Agent so upstream sites see a

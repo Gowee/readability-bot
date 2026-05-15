@@ -1,5 +1,6 @@
 interface TelegramClient {
   answerInlineQuery(inlineQueryId: string, results: unknown[], options?: Record<string, unknown>): Promise<unknown>;
+  answerGuestQuery(guestQueryId: string, result: unknown): Promise<unknown>;
   sendMessage(chatId: string | number, text: string, options?: Record<string, unknown>): Promise<unknown>;
 }
 
@@ -14,6 +15,12 @@ export function createTelegramClient(botToken: string | undefined): TelegramClie
         inline_query_id: inlineQueryId,
         results,
         ...options,
+      });
+    },
+    answerGuestQuery(guestQueryId: string, result: unknown) {
+      return callTelegramApi(botToken, "answerGuestQuery", {
+        guest_query_id: guestQueryId,
+        result,
       });
     },
     sendMessage(chatId: string | number, text: string, options = {}) {

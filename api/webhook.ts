@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { encode as escapeHtml } from "html-entities";
 import { checkRateLimit } from "@vercel/firewall";
 import { buildReadableMeta } from "../lib/server/readability.js";
+import { extractFirstLinkFromText } from "../lib/server/telegram-message.js";
 import { createTelegramClient } from "../lib/server/telegram.js";
 import { constructIvUrl, constructReadableUrl } from "../lib/server/config.js";
 
@@ -34,12 +35,41 @@ interface TelegramInlineQuery {
 interface TelegramMessage {
   chat: { id: number; type: string };
   text?: string;
+  caption?: string;
   from?: TelegramUser;
+  entities?: TelegramMessageEntity[];
+  caption_entities?: TelegramMessageEntity[];
+  guest_query_id?: string;
+  reply_to_message?: TelegramMessage;
+  guest_bot_caller_user?: TelegramUser;
+}
+
+interface TelegramMessageEntity {
+  type?: string;
+  offset?: number;
+  length?: number;
+  url?: string;
+}
+
+interface UrlExtractionDiagnosis {
+  source: "message" | "message_caption" | "reply_to_message" | "reply_to_message_caption";
+  text: string;
+  entities: TelegramMessageEntity[];
+  extracted: string | null;
+  normalized: string | null;
+}
+
+interface RenderedMeta {
+  title?: string | null;
+  excerpt?: string | null;
+  byline?: string | null;
+  siteName?: string | null;
 }
 
 interface TelegramUpdate {
   inline_query?: TelegramInlineQuery;
   message?: TelegramMessage;
+  guest_message?: TelegramMessage;
 }
 
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
@@ -47,9 +77,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
     const bot = createTelegramClient(process.env.BOT_TOKEN);
     const inlineQuery = request.body?.inline_query;
     const message = request.body?.message;
-    const user = message?.from ?? inlineQuery?.from;
+    const guestMessage = request.body?.guest_message;
+    const user = message?.from ?? guestMessage?.guest_bot_caller_user ?? inlineQuery?.from;
     const userId = user?.id;
-    const type = inlineQuery ? "inline_query" : "message";
+    const type = inlineQuery ? "inline_query" : guestMessage ? "guest_message" : "message";
 
     const logRequest = (extra: Record<string, unknown> = {}) => {
       const entry: Record<string, unknown> = {
@@ -83,7 +114,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
         response.status(200).send("");
         return;
       }
-      logRequest({ url });
+        logRequest({ url });
       try {
         const { meta } = await buildReadableMeta(url, request.headers);
         const renderedMessage = renderMessage(url, meta);
@@ -107,6 +138,11 @@ export default async function handler(request: VercelRequest, response: VercelRe
       } catch (error) {
         console.error(error);
         const errorText = String(error instanceof Error ? error.message : error);
+        logRequest({
+          url,
+          fetch_failed: true,
+          error: serializeError(error),
+        });
         try {
           await bot.answerInlineQuery(
             inlineQuery.id,
@@ -127,6 +163,40 @@ export default async function handler(request: VercelRequest, response: VercelRe
           console.error(answerError);
         }
       }
+    } else if (guestMessage?.text?.trim() && guestMessage.guest_query_id) {
+      const diagnosis = diagnoseMessageUrlExtraction(guestMessage.reply_to_message, "reply_to_message")
+        ?? diagnoseMessageUrlExtraction(guestMessage, "message")
+        ?? emptyUrlExtractionDiagnosis("message");
+      const url = diagnosis.normalized;
+      if (url) {
+        logRequest({ url });
+        try {
+          const { meta } = await buildReadableMeta(url, request.headers);
+          await bot.answerGuestQuery(guestMessage.guest_query_id, buildGuestArticleResult(url, meta));
+        } catch (error) {
+          console.error(error);
+          logRequest({
+            url,
+            extraction: diagnosis,
+            fetch_failed: true,
+            error: serializeError(error),
+          });
+          await bot.answerGuestQuery(
+            guestMessage.guest_query_id,
+            buildGuestErrorResult(
+              `error:${guestMessage.guest_query_id}`,
+              "⚠️ Error fetching article",
+              `⚠️ Failed to fetch the URL with error:\n<pre>${escapeHtml(String(error))}</pre>`
+            )
+          );
+        }
+      } else {
+        logRequest({ valid_url: false, extraction: diagnosis, guest_message_snapshot: summarizeTelegramMessage(guestMessage) });
+        await bot.answerGuestQuery(
+          guestMessage.guest_query_id,
+          buildGuestErrorResult("invalid-url", "⚠️ Invalid URL", "⚠️ It is not a valid URL.")
+        );
+      }
     } else if (message?.text?.trim()) {
       if (message.text.trim() === "/start") {
         logRequest();
@@ -138,7 +208,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
           },
         });
       } else {
-        const url = tryFixUrl(message.text);
+        const diagnosis = diagnoseMessageUrlExtraction(message, "message")
+          ?? emptyUrlExtractionDiagnosis("message");
+        const url = diagnosis.normalized;
         if (url) {
           logRequest({ url });
           let rendered: string | undefined;
@@ -146,6 +218,12 @@ export default async function handler(request: VercelRequest, response: VercelRe
             const { meta } = await buildReadableMeta(url, request.headers);
             rendered = renderMessage(url, meta);
           } catch (error) {
+            logRequest({
+              url,
+              extraction: diagnosis,
+              fetch_failed: true,
+              error: serializeError(error),
+            });
             if (message.chat.type === "private") {
               await bot.sendMessage(
                 message.chat.id,
@@ -162,7 +240,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
             });
           }
         } else {
-          logRequest({ url: message.text, valid_url: false });
+          logRequest({ valid_url: false, extraction: diagnosis });
           if (message.chat.type === "private") {
             await bot.sendMessage(message.chat.id, "⚠️ It is not a valid URL.");
           }
@@ -176,13 +254,39 @@ export default async function handler(request: VercelRequest, response: VercelRe
   }
 }
 
-function renderMessage(url: string, meta: { title?: string | null; excerpt?: string | null; byline?: string | null; siteName?: string | null }): string {
+function renderMessage(url: string, meta: RenderedMeta): string {
   const readableUrl = escapeHtml(constructReadableUrl(url));
   const ivUrl = escapeHtml(constructIvUrl(url));
   const sourceUrl = escapeHtml(url);
   const label = escapeHtml(meta.title ?? "Untitled Article");
   const source = escapeHtml(meta.byline ?? meta.siteName ?? new URL(url).hostname);
   return `<a href="${ivUrl}"> </a><a href="${readableUrl}">${label}</a>\n${source} (<a href="${sourceUrl}">source</a>)`;
+}
+
+function buildGuestArticleResult(url: string, meta: RenderedMeta): Record<string, unknown> {
+  return {
+    type: "article",
+    id: sha256(`guest:${url}`),
+    title: meta.title ?? "Untitled Article",
+    description: meta.excerpt ?? undefined,
+    input_message_content: {
+      message_text: renderMessage(url, meta),
+      parse_mode: "HTML",
+      disable_web_page_preview: false,
+    },
+  };
+}
+
+function buildGuestErrorResult(id: string, title: string, messageText: string): Record<string, unknown> {
+  return {
+    type: "article",
+    id: sha256(`guest:${id}`),
+    title,
+    input_message_content: {
+      message_text: messageText,
+      parse_mode: "HTML",
+    },
+  };
 }
 
 function tryFixUrl(url: string): string | null {
@@ -196,6 +300,95 @@ function tryFixUrl(url: string): string | null {
   } catch {
     return null;
   }
+}
+
+function diagnoseUrlExtraction(
+  source: "message" | "message_caption" | "reply_to_message" | "reply_to_message_caption",
+  text: string,
+  entities: TelegramMessageEntity[] | undefined
+): UrlExtractionDiagnosis {
+  const extracted = extractFirstLinkFromText(text, entities);
+  return {
+    source,
+    text,
+    entities: entities ?? [],
+    extracted,
+    normalized: extracted ? tryFixUrl(extracted) : null,
+  };
+}
+
+function diagnoseMessageUrlExtraction(
+  message: TelegramMessage | undefined,
+  source: "message" | "reply_to_message"
+): UrlExtractionDiagnosis | null {
+  if (message?.text?.trim()) {
+    return diagnoseUrlExtraction(
+      source,
+      message.text,
+      message.entities
+    );
+  }
+
+  if (message?.caption?.trim()) {
+    return diagnoseUrlExtraction(
+      source === "reply_to_message" ? "reply_to_message_caption" : "message_caption",
+      message.caption,
+      message.caption_entities
+    );
+  }
+
+  return null;
+}
+
+function summarizeTelegramMessage(message: TelegramMessage | undefined): Record<string, unknown> | null {
+  if (!message) {
+    return null;
+  }
+
+  return {
+    has_text: Boolean(message.text),
+    has_caption: Boolean(message.caption),
+    text: message.text,
+    caption: message.caption,
+    entities: message.entities ?? [],
+    caption_entities: message.caption_entities ?? [],
+    reply_to_message: message.reply_to_message
+      ? {
+          has_text: Boolean(message.reply_to_message.text),
+          has_caption: Boolean(message.reply_to_message.caption),
+          text: message.reply_to_message.text,
+          caption: message.reply_to_message.caption,
+          entities: message.reply_to_message.entities ?? [],
+          caption_entities: message.reply_to_message.caption_entities ?? [],
+        }
+      : null,
+  };
+}
+
+function emptyUrlExtractionDiagnosis(
+  source: "message" | "reply_to_message"
+): UrlExtractionDiagnosis {
+  return {
+    source,
+    text: "",
+    entities: [],
+    extracted: null,
+    normalized: null,
+  };
+}
+
+function serializeError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+
+  return {
+    message: String(error),
+  };
 }
 
 function sha256(input: string): string {
