@@ -21,6 +21,7 @@ interface VercelResponse {
 
 interface TelegramUser {
   id: number;
+  is_bot?: boolean;
   first_name?: string;
   last_name?: string;
   username?: string;
@@ -75,6 +76,7 @@ interface TelegramUpdate {
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
   try {
     const bot = createTelegramClient(process.env.BOT_TOKEN);
+    const currentBotId = extractBotId(process.env.BOT_TOKEN);
     const inlineQuery = request.body?.inline_query;
     const message = request.body?.message;
     const guestMessage = request.body?.guest_message;
@@ -164,6 +166,14 @@ export default async function handler(request: VercelRequest, response: VercelRe
         }
       }
     } else if (guestMessage?.text?.trim() && guestMessage.guest_query_id) {
+      if (currentBotId && guestMessage.reply_to_message?.from?.id === currentBotId) {
+        logRequest({
+          ignored: "guest_reply_to_self_message",
+        });
+        response.status(204).send("");
+        return;
+      }
+
       const diagnosis = diagnoseMessageUrlExtraction(guestMessage.reply_to_message, "reply_to_message")
         ?? diagnoseMessageUrlExtraction(guestMessage, "message")
         ?? emptyUrlExtractionDiagnosis("message");
@@ -389,6 +399,15 @@ function serializeError(error: unknown): Record<string, unknown> {
   return {
     message: String(error),
   };
+}
+
+function extractBotId(botToken: string | undefined): number | null {
+  if (!botToken) {
+    return null;
+  }
+
+  const botId = Number(botToken.split(":", 1)[0]);
+  return Number.isSafeInteger(botId) ? botId : null;
 }
 
 function sha256(input: string): string {
