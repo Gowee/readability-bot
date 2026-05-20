@@ -13,7 +13,7 @@ import {
   inferAppUrl,
 } from "./config.js";
 
-const MAX_UPSTREAM_BODY_SIZE = 2 * 1024 * 1024; // 2MB
+const MAX_UPSTREAM_BODY_SIZE = 4 * 1024 * 1024; // 4MB
 const VirtualConsole = (jsdom as typeof jsdom & {
   VirtualConsole: new () => {
     on(event: "jsdomError", listener: (error: unknown) => void): void;
@@ -402,7 +402,7 @@ async function createDomFromResponse(response: Response, url: string): Promise<J
     );
     throwHttpError(
       413,
-      `Content too large: ${(buffer.length / 1024 / 1024).toFixed(1)}MB. Maximum size is 2MB.`
+      `Content too large: ${(buffer.length / 1024 / 1024).toFixed(1)}MB. Maximum size is 4MB.`
     );
   }
   const encoding = sniffHTMLEncoding(buffer, {
@@ -537,7 +537,7 @@ function validateContentLength(contentLength: string | null, url: string): void 
   );
   throwHttpError(
     413,
-    `Content too large: ${(length / 1024 / 1024).toFixed(1)}MB. Maximum size is 2MB.`
+    `Content too large: ${(length / 1024 / 1024).toFixed(1)}MB. Maximum size is 4MB.`
   );
 }
 
